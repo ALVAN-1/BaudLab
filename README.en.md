@@ -10,7 +10,7 @@
 
 Visual protocol config · Real-time debugging · List sending · File transfer · Custom dashboard · AI assistant · MCP integration
 
-[Website](https://alvan-1.github.io/BaudLab/) · [Download](https://alvan-1.github.io/BaudLab/#download) · [Docs](https://alvan-1.github.io/BaudLab/#docs) · [Feedback](https://alvan-1.github.io/BaudLab/#feedback)
+[Website](https://alvan-1.github.io/BaudLab.io/) · [Download](https://alvan-1.github.io/BaudLab.io/#download) · [Docs](https://alvan-1.github.io/BaudLab.io/#docs) · [Feedback](https://alvan-1.github.io/BaudLab.io/#feedback)
 
 </div>
 
@@ -22,7 +22,7 @@ Visual protocol config · Real-time debugging · List sending · File transfer �
 
 BaudLab is a desktop tool for embedded development — protocol config, signal management, real-time debugging and file transfer, all in one app. Local-first by design: your protocol data never leaves your machine.
 
-> This repository hosts the BaudLab website & landing page. Installers are distributed via the [official download page](https://alvan-1.github.io/BaudLab/#download).
+> This repository hosts the BaudLab website & landing page. Installers are distributed via the [official download page](https://alvan-1.github.io/BaudLab.io/#download).
 
 ## Feature Overview
 
@@ -144,12 +144,12 @@ In the desktop app, open "Database Connection": choose "Team Server" mode → fi
 
 Latest stable **v0.0.40** (2025-09-29) · Windows 10/11 x64 · 65.4 MB · Free · MIT License
 
-Get the installer from the official download page: <https://alvan-1.github.io/BaudLab/#download>
+Get the installer from the official download page: <https://alvan-1.github.io/BaudLab.io/#download>
 
 ## Feedback
 
 - In-app feedback: Settings → Feedback (auto-attaches runtime info, fastest response)
-- Website feedback form: <https://alvan-1.github.io/BaudLab/#feedback>
+- Website feedback form: <https://alvan-1.github.io/BaudLab.io/#feedback>
 
 ## License
 

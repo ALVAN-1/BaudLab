@@ -10,7 +10,7 @@
 
 可视化协议配置 · 实时调试 · 列表发送 · 文件传输 · 自定义看板 · AI 助手 · MCP 接入
 
-[官网](https://alvan-1.github.io/BaudLab/) · [下载](https://alvan-1.github.io/BaudLab/#download) · [文档](https://alvan-1.github.io/BaudLab/#docs) · [反馈](https://alvan-1.github.io/BaudLab/#feedback)
+[官网](https://alvan-1.github.io/BaudLab.io/) · [下载](https://alvan-1.github.io/BaudLab.io/#download) · [文档](https://alvan-1.github.io/BaudLab.io/#docs) · [反馈](https://alvan-1.github.io/BaudLab.io/#feedback)
 
 </div>
 
@@ -22,7 +22,7 @@
 
 波特律动（BaudLab）是一款面向嵌入式开发的桌面工具——把协议配置、信号管理、实时调试、文件传输收进一个应用，告别靠猜和 print 调串口的时代。本地优先设计，协议数据始终留在你的机器上。
 
-> 本仓库为波特律动官网与发布页源码，安装包通过[官网下载页](https://alvan-1.github.io/BaudLab/#download)分发。
+> 本仓库为波特律动官网与发布页源码，安装包通过[官网下载页](https://alvan-1.github.io/BaudLab.io/#download)分发。
 
 ## 功能总览
 
@@ -144,12 +144,12 @@
 
 当前稳定版本 **v0.0.40**（2025-09-29）· Windows 10/11 x64 · 65.4 MB · 免费 · MIT License
 
-前往官网下载页获取安装包：<https://alvan-1.github.io/BaudLab/#download>
+前往官网下载页获取安装包：<https://alvan-1.github.io/BaudLab.io/#download>
 
 ## 反馈
 
 - 应用内反馈：设置 → 反馈（自动附带运行环境信息，响应最快）
-- 官网反馈表单：<https://alvan-1.github.io/BaudLab/#feedback>
+- 官网反馈表单：<https://alvan-1.github.io/BaudLab.io/#feedback>
 
 ## License
 
