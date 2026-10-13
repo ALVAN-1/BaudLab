@@ -5,7 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>波特律动 BaudLab — 一站式串口协议管理与调试</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%235e6ad2'/%3E%3Cpath d='M3.5 12 L6.5 12 L6.5 7 L9.5 7 L9.5 17 L12.5 17 L12.5 9.5 L15.5 9.5 L15.5 12 L20.5 12' fill='none' stroke='%23ffffff' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<meta name="description" content="波特律动 BaudLab：可视化协议配置、实时调试、列表发送、文件传输与 AI 助手，本地优先，数据不出本机。支持 Windows 10/11。">
+<meta name="description" content="波特律动 BaudLab：可视化协议配置、实时调试、列表发送、文件传输、自定义看板、协议预览、变更审核与 AI 助手，内置 MCP 服务器，本地优先，数据不出本机。支持 Windows 10/11。">
+<link rel="canonical" href="https://alvan-1.github.io/BaudLab/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://alvan-1.github.io/BaudLab/">
+<meta property="og:title" content="波特律动 BaudLab — 一站式串口协议管理与调试">
+<meta property="og:description" content="可视化协议配置、实时调试、列表发送、文件传输、自定义看板、协议预览、变更审核与 AI 助手，内置 MCP 服务器，本地优先，数据不出本机。支持 Windows 10/11。">
+<meta property="og:image" content="https://alvan-1.github.io/BaudLab/banner.gif">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -202,6 +209,33 @@ svg { display: block; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-md); }
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-md); }
 
+/* 功能全景表（深色表面 + hairline 分隔，与 DESIGN.md 令牌一致） */
+.ftable-wrap {
+  margin-top: var(--s-xl);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+.ftable-scroll { overflow-x: auto; }
+.ftable { width: 100%; border-collapse: collapse; min-width: 720px; }
+.ftable th {
+  text-align: left; font-size: 12px; font-weight: 500; letter-spacing: .4px;
+  text-transform: uppercase; color: var(--ink-subtle);
+  padding: var(--s-sm) var(--s-md); border-bottom: 1px solid var(--hairline);
+  background: var(--surface-2); white-space: nowrap;
+}
+.ftable td {
+  padding: var(--s-sm) var(--s-md); border-bottom: 1px solid var(--hairline);
+  font-size: 14px; color: var(--ink-muted); vertical-align: top; line-height: 1.55;
+}
+.ftable tbody tr:last-child td { border-bottom: none; }
+.ftable tbody tr:hover td { background: var(--surface-2); }
+.ftable td.mod { color: var(--ink); font-weight: 500; white-space: nowrap; }
+.ftable td.mod svg { width: 15px; height: 15px; color: var(--primary); display: inline-block; vertical-align: -3px; margin-right: 6px; }
+.ftable td b { color: var(--ink); font-weight: 500; }
+.ftable .mono { font-size: 12.5px; color: var(--ink-muted); }
+
 .card {
   background: var(--surface-1);
   border: 1px solid var(--hairline);
@@ -355,6 +389,316 @@ svg { display: block; }
 }
 .callout.c1 .pin::after, .callout.c2 .pin::after { left: 7px; }
 .callout.c3 .pin::after { right: 7px; background: linear-gradient(270deg, rgba(94,106,210,.5), transparent); }
+
+/* ==================================================================
+   产品预览 — 多界面演示网格
+   ================================================================== */
+.mock-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: var(--s-md); margin-top: var(--s-md);
+}
+.mock-item { display: flex; flex-direction: column; gap: var(--s-sm); }
+.mock-item .screenshot { flex: 1; display: flex; flex-direction: column; }
+.mock-item .app-window { flex: 1; }
+.mock-caption { display: flex; align-items: baseline; gap: var(--s-xs); flex-wrap: wrap; }
+.mock-caption .mk {
+  font-family: var(--font-mono); font-size: 11px; color: var(--primary);
+  border: 1px solid rgba(94,106,210,.35); border-radius: var(--r-xs);
+  padding: 1px 6px; flex: none;
+}
+.mock-caption h4 { font-size: 14px; font-weight: 600; letter-spacing: -.2px; }
+.mock-caption p { font-size: 12.5px; color: var(--ink-subtle); flex-basis: 100%; }
+
+/* 迷你应用窗（紧凑演示） */
+.app-window.mini .app-body { min-height: 0; }
+.app-window.mini .app-content { padding: var(--s-sm) var(--s-md); display: flex; flex-direction: column; gap: var(--s-xs); }
+
+/* 连接栏 / 工具条 */
+.app-bar {
+  display: flex; align-items: center; gap: var(--s-xs);
+  padding: var(--s-xs) var(--s-sm); border-bottom: 1px solid var(--hairline);
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-subtle);
+  flex-wrap: wrap;
+}
+.app-bar .dot { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--semantic-success); }
+.app-bar .chip {
+  border: 1px solid var(--hairline); border-radius: var(--r-xs);
+  padding: 1px 6px; background: var(--surface-1); color: var(--ink-muted);
+}
+.app-bar .chip.hot { color: var(--primary); border-color: rgba(94,106,210,.4); background: rgba(94,106,210,.1); }
+.app-bar .spacer { flex: 1; }
+
+/* 帧预览（原始值 / 解析值 / 物理值） */
+.fv {
+  display: grid; grid-template-columns: auto 1fr; gap: 4px var(--s-sm);
+  font-size: 11.5px; padding: var(--s-xs) var(--s-sm);
+  background: var(--surface-1); border-bottom: 1px solid var(--hairline);
+}
+.fv .k { color: var(--ink-tertiary); font-family: var(--font-mono); font-size: 10.5px; white-space: nowrap; }
+.fv .v { color: var(--ink-muted); font-family: var(--font-mono); }
+.fv .v b { color: var(--ink); font-weight: 500; }
+.fv .v .ok { color: var(--semantic-success); }
+
+/* AI 对话 */
+.ai-chat { display: flex; flex-direction: column; gap: var(--s-xs); padding: var(--s-sm) var(--s-md); }
+.ai-msg { display: flex; gap: var(--s-xs); align-items: flex-start; }
+.ai-msg .ava {
+  width: 20px; height: 20px; border-radius: var(--r-sm); flex: none;
+  display: grid; place-items: center; font-size: 10px; font-weight: 600;
+  background: var(--surface-2); border: 1px solid var(--hairline); color: var(--ink-subtle);
+}
+.ai-msg.me .ava { background: rgba(94,106,210,.15); border-color: rgba(94,106,210,.4); color: var(--primary); }
+.ai-msg .bubble {
+  font-size: 11.5px; line-height: 1.6; color: var(--ink-muted);
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: var(--r-sm); padding: 6px var(--s-xs);
+}
+.ai-msg.me .bubble { color: var(--ink); }
+.ai-tool {
+  margin-top: 5px; border: 1px dashed var(--hairline-strong); border-radius: var(--r-xs);
+  padding: 5px var(--s-xs); font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--ink-subtle); background: var(--canvas);
+}
+.ai-tool b { color: var(--primary); font-weight: 500; }
+.ai-tool .ok { color: var(--semantic-success); }
+
+/* MCP 写操作确认弹窗（mock） */
+.ai-mask {
+  position: relative; border-top: 1px solid var(--hairline);
+  background: rgba(1,1,2,.72); padding: var(--s-sm);
+  display: flex; justify-content: center;
+}
+.ai-confirm {
+  width: 100%; max-width: 300px;
+  background: var(--surface-2); border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-md); padding: var(--s-sm) var(--s-md);
+  box-shadow: 0 12px 32px rgba(0,0,0,.55);
+}
+.ai-confirm .ttl { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.ai-confirm .ttl svg { width: 13px; height: 13px; color: var(--primary); }
+.ai-confirm .msg { font-size: 11px; color: var(--ink-muted); line-height: 1.55; }
+.ai-confirm .msg .mono { color: var(--ink); }
+.ai-confirm .acts { display: flex; gap: var(--s-xs); margin-top: var(--s-xs); }
+.ai-btn {
+  font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: var(--r-xs);
+  border: 1px solid var(--hairline-strong); color: var(--ink-muted); background: var(--surface-1);
+}
+.ai-btn.pri { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+
+/* 自定义看板 */
+.db-canvas {
+  position: relative; padding: var(--s-sm);
+  background:
+    radial-gradient(circle at 1px 1px, var(--hairline) 1px, transparent 0) 0 0 / 14px 14px,
+    var(--canvas);
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-xs);
+}
+.db-card {
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: var(--r-sm); padding: var(--s-xs) var(--s-xs) 6px;
+}
+.db-card .ttl { font-size: 10.5px; color: var(--ink-tertiary); display: flex; align-items: center; gap: 5px; }
+.db-card .ttl svg { width: 11px; height: 11px; }
+.db-card .val { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--ink); letter-spacing: -.5px; }
+.db-card .val small { font-size: 10px; color: var(--ink-subtle); font-weight: 400; margin-left: 2px; }
+.db-card.wide { grid-column: span 2; }
+.db-card .spark { margin-top: 2px; }
+.db-sw {
+  width: 26px; height: 14px; border-radius: var(--r-pill); flex: none;
+  background: var(--surface-3); border: 1px solid var(--hairline-strong); position: relative;
+}
+.db-sw::after {
+  content: ""; position: absolute; top: 1px; left: 1px; width: 10px; height: 10px;
+  border-radius: var(--r-pill); background: var(--ink-tertiary);
+}
+.db-sw.on { background: rgba(94,106,210,.25); border-color: var(--primary); }
+.db-sw.on::after { left: 13px; background: var(--primary); }
+.db-trigger {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10.5px; color: var(--ink-subtle);
+  border-top: 1px solid var(--hairline); padding: 6px var(--s-sm);
+  background: var(--surface-1);
+}
+.db-trigger .mono { color: var(--primary); }
+
+/* 变更审核 diff */
+.diff { padding: var(--s-xs) var(--s-sm); display: flex; flex-direction: column; gap: 4px; }
+.diff-row {
+  display: grid; grid-template-columns: 76px 1fr; gap: var(--s-xs);
+  font-size: 11px; align-items: center;
+}
+.diff-row .f { font-family: var(--font-mono); color: var(--ink-subtle); font-size: 10.5px; }
+.diff-old, .diff-new { font-family: var(--font-mono); font-size: 10.5px; padding: 2px 6px; border-radius: var(--r-xs); }
+.diff-old { color: var(--ink-tertiary); background: var(--surface-2); text-decoration: line-through; }
+.diff-new { color: var(--ink); background: rgba(94,106,210,.12); border: 1px solid rgba(94,106,210,.3); }
+.diff-arrow { color: var(--ink-tertiary); font-size: 10px; }
+.review-acts {
+  display: flex; align-items: center; gap: var(--s-xs);
+  border-top: 1px solid var(--hairline); padding: 6px var(--s-sm); background: var(--surface-1);
+}
+.review-acts .who { font-size: 10.5px; color: var(--ink-subtle); }
+.review-acts .spacer { flex: 1; }
+
+/* 文件传输进度 */
+.ft { padding: var(--s-sm) var(--s-md); display: flex; flex-direction: column; gap: var(--s-xs); }
+.ft .row { display: flex; align-items: baseline; gap: var(--s-xs); font-size: 11.5px; }
+.ft .fname { font-family: var(--font-mono); color: var(--ink); font-size: 11.5px; }
+.ft .pct { margin-left: auto; font-family: var(--font-mono); color: var(--primary); font-size: 11.5px; }
+.prog { height: 6px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }
+.prog-fill { height: 100%; width: 68%; border-radius: var(--r-pill); background: var(--primary); }
+.ft-stats { display: flex; gap: var(--s-md); font-size: 10.5px; color: var(--ink-subtle); font-family: var(--font-mono); }
+.ft-stats b { color: var(--ink-muted); font-weight: 500; }
+.ft-log {
+  border-top: 1px solid var(--hairline); padding: 6px var(--s-md);
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-subtle);
+  background: var(--surface-1); line-height: 1.7;
+}
+.ft-log .tx { color: var(--primary); }
+
+/* 协议预览文档 */
+.doc-mock { padding: var(--s-sm) var(--s-md); font-family: var(--font-mono); font-size: 10.5px; line-height: 1.75; color: var(--ink-subtle); }
+.doc-mock .h { color: var(--ink); font-weight: 600; }
+.doc-mock .k { color: var(--primary); }
+.doc-mock .sep { border-top: 1px solid var(--hairline); margin: 5px 0; }
+.doc-mock .acts { display: flex; gap: var(--s-xs); margin-top: var(--s-xs); }
+.doc-chip {
+  font-size: 10px; font-family: var(--font-sans); padding: 2px 8px;
+  border: 1px solid var(--hairline-strong); border-radius: var(--r-xs); color: var(--ink-muted);
+}
+.doc-chip.pri { color: var(--primary); border-color: rgba(94,106,210,.4); }
+
+/* ==================================================================
+   团队联动演示（动态 · 双端 + 服务器）
+   ================================================================== */
+.flow {
+  display: grid; grid-template-columns: 1fr 156px 1fr;
+  gap: var(--s-md); align-items: stretch; position: relative;
+}
+.flow-col { display: flex; flex-direction: column; gap: var(--s-sm); position: relative; min-width: 0; }
+.flow-tag { display: flex; align-items: center; gap: var(--s-xs); font-size: 12.5px; color: var(--ink-muted); }
+.flow-tag .who {
+  width: 20px; height: 20px; border-radius: var(--r-sm); flex: none;
+  display: grid; place-items: center; font-size: 11px; font-weight: 600;
+  background: rgba(94,106,210,.15); border: 1px solid rgba(94,106,210,.4); color: var(--primary);
+}
+.flow-tag .who.b { background: var(--surface-2); border-color: var(--hairline-strong); color: var(--ink-muted); }
+.flow-tag .caption { color: var(--ink-tertiary); font-size: 11.5px; }
+
+/* 中间：服务器节点 + 连接线 + 数据包 */
+.flow-mid { position: relative; display: flex; align-items: center; justify-content: center; }
+.flow-mid .line {
+  position: absolute; top: 50%; left: calc(var(--s-md) * -1); right: calc(var(--s-md) * -1); height: 1px;
+  background: repeating-linear-gradient(90deg, var(--hairline-strong) 0 4px, transparent 4px 9px);
+}
+.flow-pkt {
+  position: absolute; top: calc(50% - 3px); left: calc(var(--s-md) * -1);
+  width: 7px; height: 7px; border-radius: var(--r-pill);
+  background: var(--primary); box-shadow: 0 0 0 4px rgba(94,106,210,.18);
+  opacity: 0; z-index: 2;
+}
+.flow-pkt.go-a2s { animation: pktA2S 1.05s var(--ease-out) forwards; }
+.flow-pkt.go-s2b { animation: pktS2B 1.05s var(--ease-out) forwards; }
+.flow-pkt.go-back { animation: pktBack 1.3s var(--ease-out) forwards; }
+@keyframes pktA2S { 0% { opacity: 0; transform: translateX(0) } 15% { opacity: 1 } 85% { opacity: 1 } 100% { opacity: 0; transform: translateX(78px) } }
+@keyframes pktS2B { 0% { opacity: 0; transform: translateX(78px) } 15% { opacity: 1 } 85% { opacity: 1 } 100% { opacity: 0; transform: translateX(156px) } }
+@keyframes pktBack { 0% { opacity: 0; transform: translateX(156px) } 15% { opacity: 1 } 85% { opacity: 1 } 100% { opacity: 0; transform: translateX(0) } }
+
+.flow-srv {
+  position: relative; z-index: 1; width: 100%;
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: var(--r-lg); padding: var(--s-sm);
+  display: flex; flex-direction: column; gap: 5px; align-items: center; text-align: center;
+}
+.flow-srv .ic {
+  width: 32px; height: 32px; border-radius: var(--r-md);
+  background: var(--surface-2); border: 1px solid var(--hairline);
+  display: grid; place-items: center; color: var(--primary);
+}
+.flow-srv .ic svg { width: 16px; height: 16px; }
+.flow-srv .nm { font-size: 12.5px; font-weight: 600; }
+.flow-srv .st { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-subtle); line-height: 1.5; }
+.flow-srv .st b { color: var(--primary); font-weight: 500; }
+.flow-srv .st b.ok { color: var(--semantic-success); }
+.flow-srv .on { font-size: 10px; color: var(--ink-tertiary); display: flex; align-items: center; gap: 5px; }
+.flow-srv .on .dot { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--semantic-success); }
+
+/* 客户端窗口内容：编辑器 / 审核 */
+.fedit { padding: var(--s-xs) var(--s-sm); display: flex; flex-direction: column; gap: 5px; }
+.fedit .r { display: flex; align-items: center; gap: var(--s-xs); font-size: 11px; border-radius: var(--r-xs); padding: 2px 4px; margin: 0 -4px; }
+.fedit .r .k { color: var(--ink-tertiary); width: 62px; flex: none; font-family: var(--font-mono); font-size: 10.5px; }
+.fedit .r .v { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-muted); }
+.fedit .r .v del { color: var(--ink-tertiary); }
+.fedit .r .v ins { text-decoration: none; color: var(--ink); background: rgba(94,106,210,.16); border-radius: 3px; padding: 0 4px; }
+.fedit .acts {
+  display: flex; gap: var(--s-xs); align-items: center;
+  border-top: 1px solid var(--hairline); padding: 6px var(--s-sm); background: var(--surface-1);
+}
+.fedit .acts .spacer { flex: 1; }
+.fedit .acts .hint { font-size: 10.5px; color: var(--ink-tertiary); }
+.fhl { transition: background-color var(--dur-med) var(--ease-out), box-shadow var(--dur-med) var(--ease-out); }
+.fhl.on { background: rgba(94,106,210,.1); box-shadow: inset 0 0 0 1px rgba(94,106,210,.45); }
+.flow-pulse { animation: flowPulse 1.5s ease-in-out infinite; }
+@keyframes flowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(94,106,210,.4); }
+  50% { box-shadow: 0 0 0 5px rgba(94,106,210,.12); }
+}
+
+/* 状态行 + Toast */
+.flow-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: var(--ink-subtle);
+}
+.flow-status .dot { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--ink-tertiary); flex: none; }
+.flow-status.wait .dot { background: var(--primary); }
+.flow-status.done .dot { background: var(--semantic-success); }
+.flow-status b { color: var(--ink); font-weight: 500; }
+.flow-toast {
+  position: absolute; left: 50%; bottom: -14px; z-index: 3;
+  transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
+  display: flex; align-items: center; gap: 7px; white-space: nowrap;
+  background: var(--surface-2); border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-pill); padding: 6px 14px;
+  font-size: 11.5px; color: var(--ink);
+  box-shadow: 0 10px 28px rgba(0,0,0,.55);
+  transition: opacity var(--dur-med) var(--ease-out), transform var(--dur-med) var(--ease-out);
+}
+.flow-toast .dot { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--primary); flex: none; }
+.flow-toast.ok .dot { background: var(--semantic-success); }
+.flow-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* 步骤时间线 */
+.flow-steps { margin-top: var(--s-xl); display: flex; align-items: center; gap: var(--s-xs); flex-wrap: wrap; }
+.flow-step {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12.5px; color: var(--ink-subtle);
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: var(--r-pill); padding: 6px 13px; cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.flow-step .n { font-family: var(--font-mono); font-size: 11px; color: var(--ink-tertiary); }
+.flow-step:hover { color: var(--ink-muted); border-color: var(--hairline-strong); }
+.flow-step.active { color: var(--ink); border-color: rgba(94,106,210,.5); background: rgba(94,106,210,.1); }
+.flow-step.active .n { color: var(--primary); }
+.flow-step.done .n { color: var(--semantic-success); }
+.flow-ctrl { display: flex; gap: var(--s-xs); margin-left: auto; }
+.flow-ctrl .btn { cursor: pointer; }
+.flow-caption {
+  margin-top: var(--s-sm); font-size: 13px; color: var(--ink-muted); line-height: 1.6;
+  border-left: 2px solid var(--primary); padding-left: var(--s-sm); min-height: 21px;
+}
+.flow-caption b { color: var(--ink); font-weight: 500; }
+
+@media (max-width: 960px) {
+  .flow { grid-template-columns: 1fr; }
+  .flow-mid { padding: var(--s-xs) 0; }
+  .flow-mid .line, .flow-pkt { display: none; }
+  .flow-srv { max-width: 320px; }
+  .flow-toast { position: static; transform: none; opacity: 1; display: none; margin-top: 2px; }
+  .flow-toast.show { display: inline-flex; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-pkt, .fhl, .flow-toast, .flow-pulse { animation: none !important; transition: none !important; }
+}
 
 /* ==================================================================
    应用场景
@@ -580,6 +924,7 @@ svg { display: block; }
   .display-md { font-size: 28px; letter-spacing: -.6px; }
   .subhead { font-size: 17px; }
   .grid-3, .grid-2, .grid-4 { grid-template-columns: 1fr; }
+  .mock-grid { grid-template-columns: 1fr; }
   .fb-row { grid-template-columns: 1fr; }
   .cta-banner { padding: var(--s-xl); }
   .cta-banner .btn { width: 100%; }
@@ -596,6 +941,7 @@ svg { display: block; }
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
   <defs>
     <symbol id="i-workspace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></symbol>
+    <symbol id="i-power" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 V12"/><path d="M6.3 6.3 A9 9 0 1 0 17.7 6.3"/></symbol>
     <symbol id="i-serial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12 L6 12 L6 6 L10 6 L10 18 L14 18 L14 9 L18 9 L18 12 L22 12"/></symbol>
     <symbol id="i-protocol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5" rx="0.5"/><path d="M9 3 L9 6 M12 3 L12 6 M15 3 L15 6"/><path d="M9 18 L9 21 M12 18 L12 21 M15 18 L15 21"/><path d="M3 9 L6 9 M3 12 L6 12 M3 15 L6 15"/><path d="M18 9 L21 9 M18 12 L21 12 M18 15 L21 15"/></symbol>
     <symbol id="i-audit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 L4 5 L4 11 C4 16 7.5 20.2 12 21.8 C16.5 20.2 20 16 20 11 L20 5 Z"/><path d="M8.5 12 L11 14.5 L15.5 9.5"/></symbol>
@@ -643,6 +989,7 @@ svg { display: block; }
     <div class="nav-links" id="navLinks">
       <a href="#features">功能特性</a>
       <a href="#preview">产品预览</a>
+      <a href="#workflow">团队联动</a>
       <a href="#usecases">应用场景</a>
       <a href="#download">下载</a>
       <a href="#docs">文档</a>
@@ -665,7 +1012,7 @@ svg { display: block; }
       <span class="badge badge-primary"><span class="dot"></span>波特律动 BaudLab · v0.0.40 稳定版 · 2025-09-29 发布</span>
     </div>
     <h1 class="display-lg">串口协议<br>一站式管理与调试</h1>
-    <p class="subhead lede">从协议配置、信号定义到实时调试、文件传输——用一个工具覆盖嵌入式开发全流程。本地优先设计，所有协议数据始终留在你的机器上。</p>
+    <p class="subhead lede">从协议配置、信号监控到实时调试、文件传输——六大工作区覆盖嵌入式开发全流程。本地优先设计，所有协议数据始终留在你的机器上。</p>
     <div class="hero-cta">
       <a class="btn btn-primary btn-lg" href="#download"><svg><use href="#i-download"/></svg>免费下载 Windows 版</a>
       <a class="btn btn-secondary btn-lg" href="#docs"><svg><use href="#i-file-text"/></svg>查看文档</a>
@@ -685,53 +1032,120 @@ svg { display: block; }
     <div class="section-head reveal">
       <p class="eyebrow">核心功能</p>
       <h2 class="display-md">为串口调试而生的完整工具链</h2>
-      <p class="subhead">协议配置、实时调试、文件传输、AI 助手——把散落在各个脚本里的工作，收进一个桌面应用。</p>
+      <p class="subhead">六大工作区覆盖协议配置、实时调试、文件传输、AI 助手——把散落在各个脚本里的工作，收进一个桌面应用。</p>
     </div>
     <div class="grid-3">
       <div class="card reveal">
         <div class="card-icon"><svg><use href="#i-protocol"/></svg></div>
         <h3>可视化协议配置</h3>
-        <p>图形化定义帧结构、信号与位域，协议模板一键复用，告别手写解析代码。</p>
+        <p>模块地址表、帧格式（帧头 / 帧尾 / 长度 / 校验）、命令字与字段图形化编辑，拖拽卡片即可调整字节顺序，协议即改即生效。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-loop"/></svg></div>
+        <h3>版本管理与导入导出</h3>
+        <p>历史版本自动留存，任意两个版本或两个协议可做 diff 对比；支持协议文件导入导出、按项目归档管理。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-audit"/></svg></div>
+        <h3>变更审核工作流</h3>
+        <p>草稿保存 → 指定审核人 → 提交审核 → 发布生效，全程留痕；修改前后逐项对比，审计日志可导出。</p>
       </div>
       <div class="card reveal">
         <div class="card-icon"><svg><use href="#i-serial"/></svg></div>
         <h3>实时串口调试</h3>
-        <p>收发数据实时监视，Hex / 文本双视图切换，毫秒级时间戳，通信过程一目了然。</p>
+        <p>端口枚举与 USB 热插拔检测，ASCII / HEX 双视图、毫秒级时间戳、自动滚动；MCP 外部客户端的串口活动实时镜像。</p>
       </div>
       <div class="card reveal">
         <div class="card-icon"><svg><use href="#i-frames"/></svg></div>
+        <h3>协议构帧发送</h3>
+        <p>选择协议与命令字、填写字段值即自动构帧（长度与校验自动计算）；帧预览同时给出原始值、解析值与物理值。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-send"/></svg></div>
         <h3>列表发送</h3>
-        <p>编排多条指令按周期自动发送，支持变量注入与延时控制，回归测试更省心。</p>
+        <p>编排多条指令按周期自动发送：循环次数、循环间隔、条目间隔独立配置，发送前数据预览，示例一键加载。</p>
       </div>
       <div class="card reveal">
         <div class="card-icon"><svg><use href="#i-file-text"/></svg></div>
-        <h3>文件传输</h3>
-        <p>内置 AFT-1 文件传输协议，支持分包、校验与传输进度管理，大文件稳定可达。</p>
+        <h3>文件传输 · AFT-1</h3>
+        <p>自研串口文件传输协议：MTU 分包、滑动窗口、选择性重传、断点续传，CRC16-CCITT 帧校验 + CRC32 整包校验。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-workspace"/></svg></div>
+        <h3>自定义看板</h3>
+        <p>拖拽式信号监控画布：传感器、开关量、趋势图组件即拖即用，绑定协议信号，配置触发条件与动作，卡片间可连线。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-monitor"/></svg></div>
+        <h3>协议预览文档</h3>
+        <p>帧结构、模块地址、命令定义一键渲染成规范文档，一键复制 Markdown，PDF 样式导出，交付沟通更高效。</p>
       </div>
       <div class="card reveal">
         <div class="card-icon"><svg><use href="#i-sparkle"/></svg></div>
         <h3>AI 助手</h3>
-        <p>自然语言描述需求，自动生成解析规则与调试指令，复杂协议也能快速上手。</p>
+        <p>OpenAI / Anthropic 双协议兼容，多模型随时切换，SSE 流式输出；提问可自动附带工具内最新协议与串口数据。</p>
       </div>
       <div class="card reveal">
         <div class="card-icon"><svg><use href="#i-cpu"/></svg></div>
         <h3>MCP 接入</h3>
-        <p>内置 MCP 服务器，让 Claude Code、Cursor 等 AI 编码工具直接读写串口、查询协议。</p>
+        <p>内置 MCP 服务器，Claude Code、Cursor 等 AI 工具直连：18 个工具 + 3 类资源 + 3 个调试模板；写操作弹窗人工确认。</p>
       </div>
       <div class="card reveal">
-        <div class="card-icon"><svg><use href="#i-parse"/></svg></div>
-        <h3>帧编解码引擎</h3>
-        <p>可扩展的解析引擎，自定义任意二进制协议格式，大小端、位域、校验灵活配置。</p>
+        <div class="card-icon"><svg><use href="#i-users"/></svg></div>
+        <h3>团队协作</h3>
+        <p>SQLite 本地优先，可选团队服务器多端同步；用户与角色权限管理、心跳在线状态、自动更新开箱即用。</p>
       </div>
-      <div class="card reveal">
-        <div class="card-icon"><svg><use href="#i-database"/></svg></div>
-        <h3>本地数据库</h3>
-        <p>SQLite 本地存储协议与信号数据，离线可用，敏感数据不出本机。</p>
-      </div>
-      <div class="card reveal">
-        <div class="card-icon"><svg><use href="#i-audit"/></svg></div>
-        <h3>审核队列</h3>
-        <p>协议变更留痕审计，支持审核工作流，团队协作与版本追溯更安心。</p>
+    </div>
+
+    <div class="ftable-wrap reveal">
+      <div class="ftable-scroll">
+        <table class="ftable">
+          <thead>
+            <tr><th>工作区</th><th>功能点</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mod"><svg><use href="#i-serial"/></svg>串口通信</td>
+              <td>调试 · 列表发送 · 文件发送</td>
+              <td><b>调试</b>：端口参数配置（波特率 / 数据位 / 停止位 / 校验位）、协议构帧发送、帧预览（原始值 / 解析值 / 物理值）、通信日志（ASCII / HEX、自动滚动、一键清空）｜<b>列表发送</b>：多条目循环发送、间隔控制、数据预览｜<b>文件发送</b>：AFT-1 传输，MTU / 滑动窗口 / 块超时 / 应答监听可调</td>
+            </tr>
+            <tr>
+              <td class="mod"><svg><use href="#i-protocol"/></svg>协议配置</td>
+              <td>协议编辑器 · 版本 · 审核</td>
+              <td>协议 CRUD、模块地址表（发送方 / 接收方）、帧格式配置（<span class="mono">CRC16</span> / 累加和、字节序）、命令字与字段（字节数 / 枚举值）、历史版本与 diff、导入导出、归档到项目、提交审核</td>
+            </tr>
+            <tr>
+              <td class="mod"><svg><use href="#i-workspace"/></svg>自定义看板</td>
+              <td>信号监控画布</td>
+              <td>组件库拖拽入画布（转速表 / 开关量 / 趋势图等），绑定协议信号，触发条件与触发动作配置，卡片连线，画布平移</td>
+            </tr>
+            <tr>
+              <td class="mod"><svg><use href="#i-monitor"/></svg>协议预览</td>
+              <td>文档生成</td>
+              <td>帧结构 / 模块地址 / 命令定义三段式文档，复制 Markdown、PDF 样式导出</td>
+            </tr>
+            <tr>
+              <td class="mod"><svg><use href="#i-sparkle"/></svg>AI 助手</td>
+              <td>对话 + 工具调用</td>
+              <td>自然语言对话、Markdown 渲染、上下文数据开关；18 个工具：协议查询 / 搜索 / 详情、构帧、解析、协议 diff、串口开关与发送、等待回复、传输状态、数据库统计与备份、草稿发布</td>
+            </tr>
+            <tr>
+              <td class="mod"><svg><use href="#i-audit"/></svg>变更审核</td>
+              <td>审核工作流</td>
+              <td>审核列表（变更单号 / 类型 / 申请人）、修改前后对比、命令对比、影响范围、通过 / 驳回 / 撤回、审计日志导出、自查限制</td>
+            </tr>
+            <tr>
+              <td class="mod"><svg><use href="#i-database"/></svg>数据与协作</td>
+              <td>SQLite + 团队服务器</td>
+              <td>本地 11 张表（协议 / 命令 / 模块 / 版本 / 审核 / 串口日志 / 用户角色等）；可选远程数据源切换、访问令牌、离线标记与自动重连；服务端提供注册登录、角色权限、心跳在线用户、备份与更新广播</td>
+            </tr>
+            <tr>
+              <td class="mod"><svg><use href="#i-settings"/></svg>应用能力</td>
+              <td>桌面端特性</td>
+              <td>系统托盘、单实例、开机自启、自动更新（检查 / 下载 / 安装）、系统通知、系统日志、深浅色主题、Gitee Issue 反馈</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -743,7 +1157,7 @@ svg { display: block; }
     <div class="section-head reveal">
       <p class="eyebrow">产品预览</p>
       <h2 class="display-md">专业级的工作界面</h2>
-      <p class="subhead">信号表格、实时终端、AI 助手同屏协作——界面为效率而设计，装上就能用。</p>
+      <p class="subhead">信号表格、实时终端、AI 助手同屏协作——六大工作区核心界面逐一呈现，装上就能用。</p>
     </div>
 
     <div class="preview-wrap reveal">
@@ -756,20 +1170,20 @@ svg { display: block; }
           </div>
           <div class="app-body">
             <aside class="app-sidebar">
+              <span class="si" title="串口通信"><svg><use href="#i-serial"/></svg></span>
               <span class="si active" title="协议配置"><svg><use href="#i-protocol"/></svg></span>
-              <span class="si" title="串口调试"><svg><use href="#i-serial"/></svg></span>
-              <span class="si" title="列表发送"><svg><use href="#i-frames"/></svg></span>
-              <span class="si" title="文件发送"><svg><use href="#i-send"/></svg></span>
+              <span class="si" title="自定义看板"><svg><use href="#i-workspace"/></svg></span>
+              <span class="si" title="协议预览"><svg><use href="#i-monitor"/></svg></span>
               <span class="si" title="AI 助手"><svg><use href="#i-sparkle"/></svg></span>
-              <span class="si" title="审核队列"><svg><use href="#i-audit"/></svg></span>
-              <span class="si" title="数据库"><svg><use href="#i-database"/></svg></span>
+              <span class="si" title="变更审核"><svg><use href="#i-audit"/></svg></span>
               <span class="si" title="设置"><svg><use href="#i-settings"/></svg></span>
             </aside>
             <div class="app-main">
               <div class="app-tabs">
                 <span class="t active"><svg><use href="#i-protocol"/></svg>协议配置</span>
-                <span class="t"><svg><use href="#i-monitor"/></svg>信号预览</span>
-                <span class="t"><svg><use href="#i-serial"/></svg>调试器</span>
+                <span class="t"><svg><use href="#i-serial"/></svg>调试</span>
+                <span class="t"><svg><use href="#i-frames"/></svg>列表发送</span>
+                <span class="t"><svg><use href="#i-send"/></svg>文件发送</span>
                 <span class="spacer"></span>
                 <span class="port"><span class="dot"></span>COM3 · 115200 8N1</span>
               </div>
@@ -779,20 +1193,20 @@ svg { display: block; }
                     <tr><th>信号</th><th>方向</th><th>类型</th><th>长度</th><th>说明</th></tr>
                   </thead>
                   <tbody>
-                    <tr><td>temp_value</td><td><span class="dir rx">上报</span></td><td>uint16</td><td>2 B</td><td>温度值 ×0.1 ℃</td></tr>
-                    <tr><td>fire_power</td><td><span class="dir tx">下发</span></td><td>uint16</td><td>2 B</td><td>火力档位 0–2100 W</td></tr>
-                    <tr><td>stir_speed</td><td><span class="dir tx">下发</span></td><td>uint8</td><td>1 B</td><td>搅拌速度 %</td></tr>
-                    <tr><td>work_mode</td><td><span class="dir tx">下发</span></td><td>uint8</td><td>1 B</td><td>工作模式枚举</td></tr>
-                    <tr><td>err_code</td><td><span class="dir rx">上报</span></td><td>uint8</td><td>1 B</td><td>故障码</td></tr>
-                    <tr><td>checksum</td><td><span class="dir rx">校验</span></td><td>uint8</td><td>1 B</td><td>帧末累加和</td></tr>
+                    <tr><td>motor_speed</td><td><span class="dir tx">下发</span></td><td>uint16</td><td>2 B</td><td>目标转速 0–3000 rpm</td></tr>
+                    <tr><td>target_steps</td><td><span class="dir tx">下发</span></td><td>int32</td><td>4 B</td><td>目标步数 · 绝对 / 相对</td></tr>
+                    <tr><td>run_ctrl</td><td><span class="dir tx">下发</span></td><td>uint8</td><td>1 B</td><td>启动 / 停止 / 使能枚举</td></tr>
+                    <tr><td>cur_position</td><td><span class="dir rx">上报</span></td><td>int32</td><td>4 B</td><td>当前位置 · 单位 step</td></tr>
+                    <tr><td>alm_code</td><td><span class="dir rx">上报</span></td><td>uint8</td><td>1 B</td><td>报警码 · 过流 / 失步 / 限位</td></tr>
+                    <tr><td>checksum</td><td><span class="dir rx">校验</span></td><td>uint16</td><td>2 B</td><td>帧末 CRC16</td></tr>
                   </tbody>
                 </table>
               </div>
               <div class="app-terminal">
-                <div class="row"><span class="ts">12:00:01.234</span><span class="tx">TX →</span><span class="hex">AA 55 01 10 00 00 00 0C&nbsp;&nbsp;&nbsp;// 查询设备状态</span></div>
-                <div class="row"><span class="ts">12:00:01.256</span><span class="rx">RX ←</span><span class="hex">AA 55 81 10 00 1C 00 64 00 00 00 00 00 3B</span></div>
-                <div class="row"><span class="ts">12:00:01.258</span><span class="rx">RX ←</span><span class="hex">✔ 帧解析完成 · temp_value=28.0℃ · fire_power=100W · checksum 校验通过</span></div>
-                <div class="row"><span class="ts">12:00:02.234</span><span class="tx">TX →</span><span class="hex">AA 55 01 20 00 32 00 64 00 00 00 00 00 B6<span class="cursor"></span></span></div>
+                <div class="row"><span class="ts">12:00:01.234</span><span class="tx">TX →</span><span class="hex">AA 55 20 10 00 02 02 58 6A 3C&nbsp;&nbsp;&nbsp;// 0x20 设置转速 600rpm</span></div>
+                <div class="row"><span class="ts">12:00:01.256</span><span class="rx">RX ←</span><span class="hex">AA 55 A0 10 00 01 00 8E 21&nbsp;&nbsp;&nbsp;// ACK · 参数已接收</span></div>
+                <div class="row"><span class="ts">12:00:01.258</span><span class="rx">RX ←</span><span class="hex">✔ 帧解析完成 · motor_speed=600rpm · run_ctrl=启动 · CRC16 通过</span></div>
+                <div class="row"><span class="ts">12:00:02.234</span><span class="tx">TX →</span><span class="hex">AA 55 22 10 00 01 01 4F D2<span class="cursor"></span></span></div>
               </div>
             </div>
           </div>
@@ -812,6 +1226,361 @@ svg { display: block; }
         <p>描述需求即可生成解析规则与调试指令。</p>
       </div>
     </div>
+
+    <div class="mock-grid">
+      <!-- 串口调试 -->
+      <div class="mock-item reveal">
+        <div class="mock-caption">
+          <span class="mk">DEBUG</span>
+          <h4>串口调试 · 帧预览三视图</h4>
+          <p>协议构帧发送，同一帧同时给出原始值、解析值与物理值；外部 AI 客户端的串口活动带 MCP 标记实时镜像。</p>
+        </div>
+        <div class="screenshot">
+          <div class="app-window mini">
+            <div class="app-titlebar">
+              <div class="app-dots"><i></i><i></i><i></i></div>
+              <span class="title">BaudLab — 串口通信</span>
+              <div class="app-dots" style="visibility:hidden"><i></i><i></i><i></i></div>
+            </div>
+            <div class="app-body">
+              <div class="app-main">
+                <div class="app-bar">
+                  <span class="dot"></span>COM3 · 115200 8N1
+                  <span class="chip hot">MCP</span>
+                  <span class="spacer"></span>
+                  <span class="chip">调试</span><span class="chip">列表发送</span><span class="chip">文件发送</span>
+                </div>
+                <div class="fv">
+                  <span class="k">协议 / 命令</span><span class="v">步进电机控制 v1.2 · <b>0x20 设置转速</b></span>
+                  <span class="k">原始值</span><span class="v">AA 55 20 10 00 02 02 58 6A <b>3C</b></span>
+                  <span class="k">解析值</span><span class="v">addr=0x10 · speed=600rpm · <span class="ok">CRC16 通过</span></span>
+                  <span class="k">物理值</span><span class="v">转速 <b>600 rpm</b> · 方向 <b>正转</b></span>
+                </div>
+                <div class="app-terminal">
+                  <div class="row"><span class="ts">12:00:01.234</span><span class="tx">TX →</span><span class="hex">AA 55 20 10 00 02 02 58 6A 3C&nbsp;&nbsp;&nbsp;// 0x20 设置转速 600rpm</span></div>
+                  <div class="row"><span class="ts">12:00:01.256</span><span class="rx">RX ←</span><span class="hex">AA 55 A0 10 00 01 00 8E 21&nbsp;&nbsp;&nbsp;// ACK · 参数已接收</span></div>
+                  <div class="row"><span class="ts">12:00:02.112</span><span class="rx">RX ←</span><span class="hex">AA 55 30 10 00 04 00 00 04 D2 5B&nbsp;&nbsp;// 0x30 位置上报 1234 step</span></div>
+                  <div class="row"><span class="ts">12:00:02.980</span><span class="tx">TX →</span><span class="hex">AA 55 01 10 00 00 00 0C<span class="cursor"></span></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI 助手 + MCP 确认 -->
+      <div class="mock-item reveal">
+        <div class="mock-caption">
+          <span class="mk">AI · MCP</span>
+          <h4>AI 助手 · 工具调用与人工确认</h4>
+          <p>对话中直接调用构帧、解析、串口工具；写操作弹窗确认，「记住允许」后可放行同类操作。</p>
+        </div>
+        <div class="screenshot">
+          <div class="app-window mini">
+            <div class="app-titlebar">
+              <div class="app-dots"><i></i><i></i><i></i></div>
+              <span class="title">BaudLab — AI 助手</span>
+              <div class="app-dots" style="visibility:hidden"><i></i><i></i><i></i></div>
+            </div>
+            <div class="app-body">
+              <div class="app-main">
+                <div class="ai-chat">
+                  <div class="ai-msg me">
+                    <span class="ava">我</span>
+                    <div class="bubble">帮我把电机转速设到 1200rpm 并启动，看看驱动返回什么</div>
+                  </div>
+                  <div class="ai-msg">
+                    <span class="ava">AI</span>
+                    <div class="bubble">
+                      按协议「步进电机控制 v1.2」构帧并发送：
+                      <div class="ai-tool"><b>build_frame</b> 0x20 设置转速 → AA 55 20 10 00 02 04 B0 3E 91 <span class="ok">✓</span><br><b>serial_send</b> COM3 · hex <span class="ok">✓ 已发送</span><br><b>parse_frame</b> AA 55 A0 10 00 01 00 8E 21 → ACK · 参数已接收</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="ai-mask">
+                  <div class="ai-confirm">
+                    <div class="ttl"><svg><use href="#i-cpu"/></svg>MCP 写操作确认</div>
+                    <div class="msg">AI 请求向 <span class="mono">COM3</span> 发送数据：按协议「步进电机控制」命令「0x22 启动电机」构帧发送。</div>
+                    <div class="acts">
+                      <span class="ai-btn pri">允许执行</span>
+                      <span class="ai-btn">拒绝</span>
+                      <span class="ai-btn" style="border:none;background:none">☑ 记住允许</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 自定义看板 -->
+      <div class="mock-item reveal">
+        <div class="mock-caption">
+          <span class="mk">BOARD</span>
+          <h4>自定义看板 · 信号绑定与触发</h4>
+          <p>组件拖拽入画布，绑定协议信号实时刷新；触发条件满足时自动执行动作。</p>
+        </div>
+        <div class="screenshot">
+          <div class="app-window mini">
+            <div class="app-titlebar">
+              <div class="app-dots"><i></i><i></i><i></i></div>
+              <span class="title">BaudLab — 自定义看板</span>
+              <div class="app-dots" style="visibility:hidden"><i></i><i></i><i></i></div>
+            </div>
+            <div class="app-body">
+              <div class="app-main">
+                <div class="db-canvas">
+                  <div class="db-card wide">
+                    <span class="ttl"><svg><use href="#i-loop"/></svg>转速趋势 · motor_speed</span>
+                    <div class="val">1200<small>rpm</small></div>
+                    <svg class="spark" width="100%" height="26" viewBox="0 0 120 26" preserveAspectRatio="none" aria-hidden="true">
+                      <polyline points="0,20 12,18 24,19 36,13 48,15 60,10 72,12 84,7 96,9 108,5 120,7" fill="none" stroke="#5e6ad2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      <polyline points="0,20 12,18 24,19 36,13 48,15 60,10 72,12 84,7 96,9 108,5 120,7 120,26 0,26" fill="rgba(94,106,210,.12)" stroke="none"/>
+                    </svg>
+                  </div>
+                  <div class="db-card">
+                    <span class="ttl"><svg><use href="#i-settings"/></svg>运行控制</span>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+                      <span class="val">运行中</span>
+                      <span class="db-sw on"></span>
+                    </div>
+                  </div>
+                  <div class="db-card">
+                    <span class="ttl"><svg><use href="#i-power"/></svg>电机电源</span>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+                      <span class="val">ON</span>
+                      <span class="db-sw on"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="db-trigger">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><use href="#i-frames"/></svg>
+                  触发条件 <span class="mono">alm_code = 0x02 失步</span> → 动作 <span class="mono">停止电机并报警</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 变更审核 -->
+      <div class="mock-item reveal">
+        <div class="mock-caption">
+          <span class="mk">AUDIT</span>
+          <h4>变更审核 · 前后对比</h4>
+          <p>协议修改前后逐项 diff，影响范围一目了然；通过 / 驳回全程留痕，审计日志可导出。</p>
+        </div>
+        <div class="screenshot">
+          <div class="app-window mini">
+            <div class="app-titlebar">
+              <div class="app-dots"><i></i><i></i><i></i></div>
+              <span class="title">BaudLab — 变更审核</span>
+              <div class="app-dots" style="visibility:hidden"><i></i><i></i><i></i></div>
+            </div>
+            <div class="app-body">
+              <div class="app-main">
+                <div class="app-bar">
+                  <span class="chip hot">CHG-0042</span>步进电机控制 v1.2 → v1.3
+                  <span class="spacer"></span>
+                  <span>申请人 · 嵌入式组</span>
+                </div>
+                <div class="diff">
+                  <div class="diff-row"><span class="f">校验方式</span><span><span class="diff-old">SUM 累加和</span> <span class="diff-arrow">→</span> <span class="diff-new">CRC16-MODBUS</span></span></div>
+                  <div class="diff-row"><span class="f">命令码</span><span><span class="diff-old">0x22 启动</span> <span class="diff-arrow">→</span> <span class="diff-new">0x23 启动 / 点动</span></span></div>
+                  <div class="diff-row"><span class="f">target_steps</span><span><span class="diff-old">uint16 LE</span> <span class="diff-arrow">→</span> <span class="diff-new">int32 BE</span></span></div>
+                  <div class="diff-row"><span class="f">影响范围</span><span class="diff-new" style="font-family:var(--font-sans)">下游 2 个协议 · 列表发送 3 条</span></div>
+                </div>
+                <div class="review-acts">
+                  <span class="who">审核人：我 · 自查限制已启用</span>
+                  <span class="spacer"></span>
+                  <span class="ai-btn">驳回</span>
+                  <span class="ai-btn pri">通过并发布</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 文件传输 AFT-1 -->
+      <div class="mock-item reveal">
+        <div class="mock-caption">
+          <span class="mk">AFT-1</span>
+          <h4>文件传输 · 滑动窗口与重传</h4>
+          <p>MTU 分包、滑动窗口发送、选择性重传；帧级 CRC16 + 整包 CRC32 双重校验。</p>
+        </div>
+        <div class="screenshot">
+          <div class="app-window mini">
+            <div class="app-titlebar">
+              <div class="app-dots"><i></i><i></i><i></i></div>
+              <span class="title">BaudLab — 文件发送</span>
+              <div class="app-dots" style="visibility:hidden"><i></i><i></i><i></i></div>
+            </div>
+            <div class="app-body">
+              <div class="app-main">
+                <div class="ft">
+                  <div class="row"><span class="fname">stepper_fw_v2.1.bin</span><span class="pct">68%</span></div>
+                  <div class="prog"><div class="prog-fill"></div></div>
+                  <div class="ft-stats">
+                    <span><b>MTU</b> 512</span><span><b>窗口</b> 8</span><span><b>已传</b> 1.4 / 2.1 MB</span><span><b>重传</b> 3</span>
+                  </div>
+                </div>
+                <div class="ft-log">
+                  <div><span class="tx">TX →</span> DATA seq=104 len=504 · 窗口 [101..108]</div>
+                  <div>RX ← ACK seq=104 · 位图 0b01111111</div>
+                  <div><span class="tx">TX →</span> RESEND seq=107（超时重传）</div>
+                  <div>RX ← FINAL status=0 · CRC32 校验通过</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 协议预览 -->
+      <div class="mock-item reveal">
+        <div class="mock-caption">
+          <span class="mk">DOC</span>
+          <h4>协议预览 · 一键生成规范文档</h4>
+          <p>帧结构、模块地址、命令定义自动排版成文，复制 Markdown 或导出 PDF，交付沟通更高效。</p>
+        </div>
+        <div class="screenshot">
+          <div class="app-window mini">
+            <div class="app-titlebar">
+              <div class="app-dots"><i></i><i></i><i></i></div>
+              <span class="title">BaudLab — 协议预览</span>
+              <div class="app-dots" style="visibility:hidden"><i></i><i></i><i></i></div>
+            </div>
+            <div class="app-body">
+              <div class="app-main">
+                <div class="doc-mock">
+                  <div class="h"># 步进电机控制协议 v1.2</div>
+                  <div class="sep"></div>
+                  <div class="h">一、帧结构</div>
+                  <div><span class="k">AA 55</span> | LEN | CMD | PAYLOAD… | <span class="k">CRC16</span></div>
+                  <div class="h">二、模块地址</div>
+                  <div>0x01 主控板 · 0x10 电机驱动 · 0x20 编码器</div>
+                  <div class="h">三、命令定义</div>
+                  <div>0x20 设置转速 uint16 · 0x22 启动 / 停止 uint8</div>
+                  <div class="acts">
+                    <span class="doc-chip pri">复制 Markdown</span>
+                    <span class="doc-chip">导出 PDF</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 团队联动（动态演示） ===== -->
+<section class="section" id="workflow">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">团队联动</p>
+      <h2 class="display-md">一次协议变更的完整流转</h2>
+      <p class="subhead">工程师提交审核 → 团队服务器同步 → 审核人一键发布，两端状态实时联动。演示自动播放，也可点击步骤或按钮自行控制。</p>
+    </div>
+
+    <div class="flow reveal" id="flowDemo">
+      <!-- 客户端 A：工程师 -->
+      <div class="flow-col">
+        <div class="flow-tag"><span class="who">A</span>工程师 · 协议变更<span class="caption">客户端 A</span></div>
+        <div class="screenshot">
+          <div class="app-window mini">
+            <div class="app-titlebar">
+              <div class="app-dots"><i></i><i></i><i></i></div>
+              <span class="title">BaudLab — 协议配置</span>
+              <div class="app-dots" style="visibility:hidden"><i></i><i></i><i></i></div>
+            </div>
+            <div class="app-body">
+              <div class="app-main">
+                <div class="app-bar">
+                  <span class="chip">步进电机控制 v1.2</span>
+                  <span class="chip" id="fChipA">未保存变更</span>
+                </div>
+                <div class="fedit">
+                  <div class="r fhl" id="fHlChk"><span class="k">校验方式</span><span class="v"><del>SUM 累加和</del> → <ins>CRC16-MODBUS</ins></span></div>
+                  <div class="r"><span class="k">帧头 / 帧尾</span><span class="v">AA 55 · 0D</span></div>
+                  <div class="r"><span class="k">命令码</span><span class="v">0x20 设置转速 · 0x22 启动 / 停止</span></div>
+                  <div class="acts">
+                    <span class="hint">指定审核人：B</span>
+                    <span class="spacer"></span>
+                    <span class="ai-btn pri" id="fBtnSubmit">提交审核</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flow-status" id="fStatusA"><span class="dot"></span><b>草稿</b> · 未提交</div>
+        <div class="flow-toast" id="fToastA"><span class="dot"></span>CHG-0043 已发布生效 · 协议更新为 v1.3</div>
+      </div>
+
+      <!-- 中间：团队服务器 -->
+      <div class="flow-mid">
+        <span class="line"></span>
+        <span class="flow-pkt" id="fPkt"></span>
+        <div class="flow-srv">
+          <span class="ic"><svg><use href="#i-database"/></svg></span>
+          <span class="nm">团队服务器</span>
+          <span class="st" id="fSrvStatus">队列空闲<br>0 条待审</span>
+          <span class="on"><span class="dot"></span>2 人在线</span>
+        </div>
+      </div>
+
+      <!-- 客户端 B：审核人 -->
+      <div class="flow-col">
+        <div class="flow-tag"><span class="who b">B</span>审核人 · 审批发布<span class="caption">客户端 B</span></div>
+        <div class="screenshot">
+          <div class="app-window mini">
+            <div class="app-titlebar">
+              <div class="app-dots"><i></i><i></i><i></i></div>
+              <span class="title">BaudLab — 变更审核</span>
+              <div class="app-dots" style="visibility:hidden"><i></i><i></i><i></i></div>
+            </div>
+            <div class="app-body">
+              <div class="app-main">
+                <div class="app-bar">
+                  <span class="chip hot" id="fBadge" style="display:none">变更审核 · 1</span>
+                  <span class="chip">CHG-0043 · v1.2 → v1.3</span>
+                </div>
+                <div class="fedit">
+                  <div class="r fhl" id="fHlDiff"><span class="k">校验方式</span><span class="v"><del>SUM 累加和</del> → <ins>CRC16-MODBUS</ins></span></div>
+                  <div class="r"><span class="k">影响范围</span><span class="v">下游 2 个协议 · 列表发送 3 条</span></div>
+                  <div class="acts">
+                    <span class="hint">申请人：A</span>
+                    <span class="spacer"></span>
+                    <span class="ai-btn">驳回</span>
+                    <span class="ai-btn pri" id="fBtnPublish">通过并发布</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flow-status" id="fStatusB"><span class="dot"></span>无待审</div>
+        <div class="flow-toast" id="fToastB"><span class="dot"></span>收到待审变更 CHG-0043 · 来自 A</div>
+      </div>
+    </div>
+
+    <!-- 步骤控制 -->
+    <div class="flow-steps reveal" id="fSteps">
+      <button class="flow-step" type="button" data-i="0"><span class="n">01</span>修改协议</button>
+      <button class="flow-step" type="button" data-i="1"><span class="n">02</span>提交同步</button>
+      <button class="flow-step" type="button" data-i="2"><span class="n">03</span>待审提醒</button>
+      <button class="flow-step" type="button" data-i="3"><span class="n">04</span>审核 diff</button>
+      <button class="flow-step" type="button" data-i="4"><span class="n">05</span>发布生效</button>
+      <div class="flow-ctrl">
+        <button class="btn btn-secondary" type="button" id="fPlay"><svg><use href="#i-loop"/></svg><span id="fPlayTxt">暂停</span></button>
+        <button class="btn btn-secondary" type="button" id="fReplay"><svg><use href="#i-refresh-cw"/></svg>重播</button>
+      </div>
+    </div>
+    <p class="flow-caption reveal" id="fCaption"></p>
   </div>
 </section>
 
@@ -943,9 +1712,9 @@ svg { display: block; }
         <p>安装、连接串口、创建第一个协议配置——十分钟完成首次联调。</p>
         <button class="doc-link" type="button">查看摘要<svg><use href="#i-arrow-right"/></svg></button>
         <div class="doc-abstract" hidden>
-          1. 安装后进入「协议配置」，选择串口号与波特率（如 COM3 · 115200 8N1）。<br>
-          2. 新建协议模板，定义帧头、信号与位域，保存后即时生效。<br>
-          3. 打开「调试器」实时观察收发数据，或进入「列表发送」编排指令序列。<br>
+          1. 安装后进入「串口通信」，选择串口号与波特率（如 COM3 · 115200 8N1）建立连接。<br>
+          2. 在「协议配置」新建协议，定义帧头、模块地址、命令字与字段，保存后即时生效。<br>
+          3. 回到调试页选择协议与命令字即可构帧发送，实时观察设备回复；也可进入「列表发送」编排指令序列，或用「文件发送」通过 AFT-1 传输固件。<br>
           完整图文指南内置在应用的「帮助」面板，随时可查。
         </div>
       </div>
@@ -958,7 +1727,7 @@ svg { display: block; }
         <p>将串口能力接入 Claude Code、Cursor 等 AI 编码助手的完整配置步骤。</p>
         <button class="doc-link" type="button">查看摘要<svg><use href="#i-arrow-right"/></svg></button>
         <div class="doc-abstract" hidden>
-          在应用「设置」中开启内置 MCP 服务器，复制生成的 stdio 端点配置，粘贴到 AI 客户端的 MCP 配置文件中即可。连接后，AI 助手可直接查询协议模板、读取串口数据、发送调试指令。完整配置步骤与常见问题见仓库文档目录。
+          在应用「设置」中开启内置 MCP 服务器，复制生成的 stdio 端点配置，粘贴到 AI 客户端的 MCP 配置文件中即可。连接后，AI 客户端可调用 18 个工具：查询协议库、构帧、解析数据、读取串口日志、打开 / 关闭 / 发送串口等；写操作会弹窗人工确认。支持在线桥接与离线只读两种模式，完整配置步骤与常见问题见仓库文档目录。
         </div>
       </div>
       <div class="card doc-card reveal">
@@ -970,7 +1739,7 @@ svg { display: block; }
         <p>分包格式、校验机制与进度管理的完整规范，二次开发必备。</p>
         <button class="doc-link" type="button">查看摘要<svg><use href="#i-arrow-right"/></svg></button>
         <div class="doc-abstract" hidden>
-          AFT-1 面向串口大文件传输设计：应用层分包 + 帧序号 + 累加和校验，接收端按序号重组并校验完整性，支持传输进度上报与中断续传协商。帧格式字段定义与状态机详见仓库中的协议规范文档。
+          AFT-1 面向串口大文件传输设计：按 MTU 分包 + 帧序号 + 滑动窗口，帧级 CRC16-CCITT 校验、整文件 CRC32 校验，支持选择性重传（RESEND）与断点续传，接收端按序号重组并校验完整性。帧格式字段定义与状态机详见仓库中的协议规范文档。
         </div>
       </div>
       <div class="card doc-card reveal">
@@ -1231,6 +2000,135 @@ svg { display: block; }
       btn.firstChild.textContent = open ? '收起摘要' : '查看摘要';
     });
   });
+
+  /* ===== 团队联动演示：双端 + 服务器状态机 ===== */
+  var flowRoot = document.getElementById('flowDemo');
+  if (flowRoot) {
+    var fSteps = Array.prototype.slice.call(document.querySelectorAll('.flow-step'));
+    var fCaption = document.getElementById('fCaption');
+    var fPlayBtn = document.getElementById('fPlay');
+    var fPlayTxt = document.getElementById('fPlayTxt');
+    var fReplayBtn = document.getElementById('fReplay');
+    var fPkt = document.getElementById('fPkt');
+    var fSrv = document.getElementById('fSrvStatus');
+    var fStatusA = document.getElementById('fStatusA');
+    var fStatusB = document.getElementById('fStatusB');
+    var fToastA = document.getElementById('fToastA');
+    var fToastB = document.getElementById('fToastB');
+    var fBadge = document.getElementById('fBadge');
+    var fChipA = document.getElementById('fChipA');
+    var fHlChk = document.getElementById('fHlChk');
+    var fHlDiff = document.getElementById('fHlDiff');
+    var fBtnSubmit = document.getElementById('fBtnSubmit');
+    var fBtnPublish = document.getElementById('fBtnPublish');
+
+    var SRV = {
+      idle: '队列空闲<br>0 条待审',
+      pending: '<b>CHG-0043</b> 待审核<br>提交人 A · 审核人 B',
+      published: '<b class="ok">CHG-0043</b> 已发布<br>v1.2 → v1.3 全端同步'
+    };
+
+    var FLOW_STEPS = [
+      {
+        cap: '<b>第 1 步 · 客户端 A</b>　工程师修改协议：校验方式由 SUM 累加和改为 CRC16-MODBUS，点击「提交审核」并指定审核人 B。',
+        pkt: null,
+        s: { hlChk: 1, hlDiff: 0, pulseSubmit: 1, pulsePublish: 0, badge: 0, chipA: '未保存变更', srv: 'idle', a: ['', '<b>草稿</b> · 未提交'], b: ['', '无待审'], toastA: 0, toastB: 0 }
+      },
+      {
+        cap: '<b>第 2 步 · 同步服务器</b>　变更单 CHG-0043 上传团队服务器，进入待审核队列——全队可见，全程留痕可溯。',
+        pkt: 'a2s',
+        s: { hlChk: 0, hlDiff: 0, pulseSubmit: 0, pulsePublish: 0, badge: 0, chipA: '已提交 · 审核中', srv: 'pending', a: ['wait', '<b>审核中</b> · CHG-0043'], b: ['', '无待审'], toastA: 0, toastB: 0 }
+      },
+      {
+        cap: '<b>第 3 步 · 客户端 B</b>　服务器推送待审提醒，B 的「变更审核」亮起待审徽标，并弹出通知。',
+        pkt: 's2b',
+        s: { hlChk: 0, hlDiff: 0, pulseSubmit: 0, pulsePublish: 0, badge: 1, chipA: '已提交 · 审核中', srv: 'pending', a: ['wait', '<b>审核中</b> · CHG-0043'], b: ['wait', '<b>1 条待审</b>'], toastA: 0, toastB: 1 }
+      },
+      {
+        cap: '<b>第 4 步 · 客户端 B</b>　审核人查看修改前后 diff 与影响范围，确认无误后点击「通过并发布」。',
+        pkt: null,
+        s: { hlChk: 0, hlDiff: 1, pulseSubmit: 0, pulsePublish: 1, badge: 1, chipA: '已提交 · 审核中', srv: 'pending', a: ['wait', '<b>审核中</b> · CHG-0043'], b: ['wait', '<b>1 条待审</b> · 查看中'], toastA: 0, toastB: 1 }
+      },
+      {
+        cap: '<b>第 5 步 · 全端生效</b>　发布结果回传并双向同步：A 弹出「已发布生效」，两端协议统一更新为 v1.3。',
+        pkt: 'back',
+        s: { hlChk: 0, hlDiff: 0, pulseSubmit: 0, pulsePublish: 0, badge: 0, chipA: '已发布 · v1.3', srv: 'published', a: ['done', '<b>已发布</b> · v1.3'], b: ['done', '<b>已审核</b> · 已发布'], toastA: 1, toastB: 0 }
+      }
+    ];
+
+    function fSetStatus(el, cls, html) {
+      el.className = 'flow-status' + (cls ? ' ' + cls : '');
+      el.innerHTML = '<span class="dot"></span>' + html;
+    }
+    function fFirePkt(kind) {
+      fPkt.className = 'flow-pkt';
+      void fPkt.offsetWidth; /* 重启动画 */
+      fPkt.classList.add('go-' + kind);
+    }
+    function fRender(i) {
+      var s = FLOW_STEPS[i].s;
+      fHlChk.classList.toggle('on', !!s.hlChk);
+      fHlDiff.classList.toggle('on', !!s.hlDiff);
+      fBtnSubmit.classList.toggle('flow-pulse', !!s.pulseSubmit);
+      fBtnPublish.classList.toggle('flow-pulse', !!s.pulsePublish);
+      fBadge.style.display = s.badge ? '' : 'none';
+      fChipA.textContent = s.chipA;
+      fSrv.innerHTML = SRV[s.srv];
+      fSetStatus(fStatusA, s.a[0], s.a[1]);
+      fSetStatus(fStatusB, s.b[0], s.b[1]);
+      fToastA.classList.toggle('show', !!s.toastA);
+      fToastB.classList.toggle('show', !!s.toastB);
+      fCaption.innerHTML = FLOW_STEPS[i].cap;
+      fSteps.forEach(function (el, k) {
+        el.classList.toggle('active', k === i);
+        el.classList.toggle('done', k < i);
+      });
+      if (FLOW_STEPS[i].pkt) fFirePkt(FLOW_STEPS[i].pkt);
+    }
+
+    var fIdx = -1, fTimer = null, fPlaying = false, fUserPaused = false;
+    function fNext() { fIdx = (fIdx + 1) % FLOW_STEPS.length; fRender(fIdx); }
+    function fPlay() {
+      fPlaying = true; fUserPaused = false;
+      fPlayTxt.textContent = '暂停';
+      clearInterval(fTimer);
+      fTimer = setInterval(fNext, 3800);
+    }
+    function fPause() {
+      fPlaying = false;
+      fPlayTxt.textContent = '播放';
+      clearInterval(fTimer);
+    }
+    fPlayBtn.addEventListener('click', function () {
+      if (fPlaying) { fPause(); fUserPaused = true; }
+      else { fPlay(); }
+    });
+    fReplayBtn.addEventListener('click', function () { fIdx = -1; fNext(); fPlay(); });
+    fSteps.forEach(function (el) {
+      el.addEventListener('click', function () {
+        fIdx = parseInt(el.getAttribute('data-i'), 10);
+        fRender(fIdx);
+        if (fPlaying) { clearInterval(fTimer); fTimer = setInterval(fNext, 3800); }
+      });
+    });
+
+    /* 进入视口自动播放，离开暂停；用户手动暂停后不自动恢复 */
+    if ('IntersectionObserver' in window) {
+      var fIo = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            if (fIdx < 0) { fIdx = -1; fNext(); }
+            if (!fUserPaused) fPlay();
+          } else {
+            fPause();
+          }
+        });
+      }, { threshold: 0.2 });
+      fIo.observe(flowRoot);
+    } else {
+      fNext(); fPlay();
+    }
+  }
 })();
 </script>
 </body>
