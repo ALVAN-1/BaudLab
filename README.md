@@ -4,7 +4,7 @@
 
 ![release](https://img.shields.io/badge/release-v0.0.40-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20x64-lightgrey) ![license](https://img.shields.io/badge/license-MIT-green) ![stars](https://img.shields.io/github/stars/ALVAN-1/BaudLab.io?label=stars&color=yellow)
 
-**技术栈**　![Electron](https://img.shields.io/badge/Electron-31-47848f?logo=electron&logoColor=white) ![Vue.js](https://img.shields.io/badge/Vue.js-3-4FC08D?logo=vuedotjs&logoColor=white) ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white) ![SerialPort](https://img.shields.io/badge/SerialPort-12-blue) ![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.13-339933?logo=nodedotjs&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-31-47848f?logo=electron&logoColor=white) ![Vue.js](https://img.shields.io/badge/Vue.js-3-4FC08D?logo=vuedotjs&logoColor=white) ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white) ![SerialPort](https://img.shields.io/badge/SerialPort-12-blue) ![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.13-339933?logo=nodedotjs&logoColor=white)
 
 <div align="center">
 
