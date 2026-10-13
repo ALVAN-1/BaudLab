@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="164" height="314" viewBox="0 0 164 314">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1a1d2e"/>
+      <stop offset="1" stop-color="#0d0f1a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFB547"/>
+      <stop offset="1" stop-color="#FF6B00"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 深色背景 -->
+  <rect width="164" height="314" fill="url(#bg)"/>
+
+  <!-- 顶部装饰条 -->
+  <rect x="0" y="0" width="164" height="4" fill="url(#accent)"/>
+
+  <!-- Logo 圆形底 -->
+  <circle cx="82" cy="110" r="42" fill="#1e2236" stroke="#2a3050" stroke-width="2"/>
+
+  <!-- 方波图标 -->
+  <path d="M46 130 H70 V108 H94 V86 H118"
+        fill="none" stroke="url(#accent)" stroke-width="8"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="118" cy="86" r="5" fill="#fff"/>
+
+  <!-- 产品名 -->
+  <text x="82" y="185" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="15" font-weight="bold">Serial</text>
+  <text x="82" y="205" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="15" font-weight="bold">Protocol</text>
+  <text x="82" y="225" text-anchor="middle" fill="#FFB547" font-family="Arial, sans-serif" font-size="15" font-weight="bold">Manager</text>
+
+  <!-- 分隔线 -->
+  <line x1="40" y1="248" x2="124" y2="248" stroke="#2a3050" stroke-width="1"/>
+
+  <!-- 底部版本信息 -->
+  <text x="82" y="275" text-anchor="middle" fill="#6b7280" font-family="Arial, sans-serif" font-size="10">串口协议管理工具</text>
+  <text x="82" y="295" text-anchor="middle" fill="#4b5563" font-family="Arial, sans-serif" font-size="9">v1.0.0</text>
+</svg>

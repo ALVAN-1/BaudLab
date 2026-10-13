@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <!-- Square wave (digital signal) - represents serial/UART debug -->
+  <path d="M2 12 L6 12 L6 6 L10 6 L10 18 L14 18 L14 9 L18 9 L18 12 L22 12"/>
+</svg>

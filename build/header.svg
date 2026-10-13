@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="580" height="60" viewBox="0 0 580 60">
+  <defs>
+    <linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.7" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#fff5e6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="580" height="60" fill="url(#hdr)"/>
+
+  <!-- 右侧装饰 -->
+  <g transform="translate(470, 8)">
+    <!-- 小方波图标 -->
+    <path d="M30 42 H55 V25 H80 V10 H105"
+          fill="none" stroke="#FF8A3D" stroke-width="4"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="105" cy="10" r="3" fill="#FF6B00"/>
+  </g>
+
+  <!-- 底部细线 -->
+  <line x1="0" y1="59" x2="580" y2="59" stroke="#f0e6d6" stroke-width="1"/>
+</svg>

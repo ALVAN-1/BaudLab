@@ -1,0 +1,41 @@
+# ── 依赖 ──
+node_modules/
+
+# ── 运行时数据（SQLite 数据库、AI 配置、服务器配置）──
+/data/
+server-data/
+server.config.json
+
+# ── 发布工具配置（含 Gitee 令牌，请勿提交）──
+.release-config.json
+.release-notes.tmp
+latest.yml.bak
+
+# ── 更新文件目录（含安装包，由 release.js 自动生成）──
+updates/
+服务器部署包/
+服务器部署包.zip
+
+# ── 日志与临时文件 ──
+*.log
+crash.log
+bat-stderr.txt
+bat-stdout.txt
+
+# ── 推送脚本工作区 / IDE 分享包缓存 ──
+.tmp-push-git/
+.trae-html-share-packages/
+
+# ── 打包产物（electron-builder 输出 + 安装包，一律不进 git）──
+dist/
+dist-release/
+.eb-cache/
+# 防御性规则：即使打包产物被放到仓库根目录也不会误提交
+/*.exe
+/*.blockmap
+/*.zip
+/latest.yml
+/win-unpacked/
+
+# ── Agent 工作区记忆（勿提交）──
+.workbuddy/

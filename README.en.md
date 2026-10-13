@@ -2,7 +2,7 @@
 
 [![English](https://img.shields.io/badge/Language-English-blue)](README.en.md) [![简体中文](https://img.shields.io/badge/Language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-red)](README.md)
 
-![release](https://img.shields.io/badge/release-v0.0.40-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20x64-lightgrey) ![license](https://img.shields.io/badge/license-MIT-green) ![stars](https://img.shields.io/github/stars/ALVAN-1/BaudLab.io?label=stars&color=yellow)
+![release](https://img.shields.io/badge/release-v1.0.0-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20x64-lightgrey) ![license](https://img.shields.io/badge/license-MIT-green) ![stars](https://img.shields.io/github/stars/ALVAN-1/BaudLab.io?label=stars&color=yellow)
 
 ![Electron](https://img.shields.io/badge/Electron-31-47848f?logo=electron&logoColor=white) ![Vue.js](https://img.shields.io/badge/Vue.js-3-4FC08D?logo=vuedotjs&logoColor=white) ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white) ![SerialPort](https://img.shields.io/badge/SerialPort-12-blue) ![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.13-339933?logo=nodedotjs&logoColor=white)
 
@@ -111,7 +111,7 @@ Drag components from the library (temperature sensors, switches, trends, etc.) o
 
 ### 8. Desktop Capabilities
 
-System tray (minimize to background), single instance, launch at login, auto-update (electron-updater + Gitee Releases: check / download / install with progress), system notifications, system log, light / dark theme, Gitee Issue feedback (in-app direct, web fallback), MCP setup guide.
+System tray (minimize to background), single instance, launch at login, auto-update (electron-updater + Gitee Releases: check / download / install with progress), system notifications, system log, light / dark theme, GitHub Issue feedback (in-app direct, web fallback), MCP setup guide.
 
 ## Quick Start: Team Server + Admin Console
 
@@ -146,7 +146,7 @@ In the desktop app, open "Database Connection": choose "Team Server" mode → fi
 
 ## Download
 
-Latest stable **v0.0.40** (2025-09-29) · Windows 10/11 x64 · 65.4 MB · Free · MIT License
+Latest stable **v1.0.0** (2026-10-13) · Windows 10/11 x64 · 65.4 MB · Free · MIT License
 
 Get the installer from the official download page: <https://alvan-1.github.io/BaudLab.io/#download>
 

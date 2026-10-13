@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <!-- Help circle with question mark -->
+  <circle cx="12" cy="12" r="9"/>
+  <path d="M9.09 9 A3 3 0 0 1 12 6.5 C13.6 6.5 14.9 7.6 15 9.1 C15.1 10.7 13.5 11.5 12.5 12.1 C12 12.4 11.5 12.8 11.5 13.5 L11.5 14"/>
+  <circle cx="12" cy="17" r="0.5" fill="currentColor" stroke="none"/>
+</svg>

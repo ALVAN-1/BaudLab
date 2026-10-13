@@ -2,7 +2,7 @@
 
 [![English](https://img.shields.io/badge/Language-English-blue)](README.en.md) [![简体中文](https://img.shields.io/badge/Language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-red)](README.md)
 
-![release](https://img.shields.io/badge/release-v0.0.40-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20x64-lightgrey) ![license](https://img.shields.io/badge/license-MIT-green) ![stars](https://img.shields.io/github/stars/ALVAN-1/BaudLab.io?label=stars&color=yellow)
+![release](https://img.shields.io/badge/release-v1.0.0-blue) ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20x64-lightgrey) ![license](https://img.shields.io/badge/license-MIT-green) ![stars](https://img.shields.io/github/stars/ALVAN-1/BaudLab.io?label=stars&color=yellow)
 
 ![Electron](https://img.shields.io/badge/Electron-31-47848f?logo=electron&logoColor=white) ![Vue.js](https://img.shields.io/badge/Vue.js-3-4FC08D?logo=vuedotjs&logoColor=white) ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white) ![SerialPort](https://img.shields.io/badge/SerialPort-12-blue) ![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.13-339933?logo=nodedotjs&logoColor=white)
 
@@ -111,7 +111,7 @@
 
 ### 8. 应用级能力
 
-系统托盘（最小化到后台）、单实例、开机自启、自动更新（electron-updater + Gitee Releases，检查 / 下载 / 安装 / 进度提示）、系统通知、系统日志、深浅色主题、Gitee Issue 反馈（应用内直提，失败回退网页）、MCP 接入指南。
+系统托盘（最小化到后台）、单实例、开机自启、自动更新（electron-updater + Gitee Releases，检查 / 下载 / 安装 / 进度提示）、系统通知、系统日志、深浅色主题、GitHub Issue 反馈（应用内直提，失败回退网页）、MCP 接入指南。
 
 ## 快速开始：团队服务器 + 管理后台
 
@@ -146,7 +146,7 @@
 
 ## 下载
 
-当前稳定版本 **v0.0.40**（2025-09-29）· Windows 10/11 x64 · 65.4 MB · 免费 · MIT License
+当前稳定版本 **v1.0.0**（2026-10-13）· Windows 10/11 x64 · 65.4 MB · 免费 · MIT License
 
 前往官网下载页获取安装包：<https://alvan-1.github.io/BaudLab.io/#download>
 

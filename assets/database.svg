@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <!-- DB cylinder + small connection port -->
+  <ellipse cx="12" cy="5" rx="7.5" ry="2.5"/>
+  <path d="M4.5 5 V12 C4.5 13.4 7.86 14.5 12 14.5 C16.14 14.5 19.5 13.4 19.5 12 V5"/>
+  <path d="M4.5 12 V19 C4.5 20.4 7.86 21.5 12 21.5 C16.14 21.5 19.5 20.4 19.5 19 V12"/>
+</svg>
