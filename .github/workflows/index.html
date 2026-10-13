@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>波特律动 BaudLab — 一站式串口协议管理与调试</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%235e6ad2'/%3E%3Cpath d='M3.5 12 L6.5 12 L6.5 7 L9.5 7 L9.5 17 L12.5 17 L12.5 9.5 L15.5 9.5 L15.5 12 L20.5 12' fill='none' stroke='%23ffffff' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta name="description" content="波特律动 BaudLab：可视化协议配置、实时调试、列表发送、文件传输与 AI 助手，本地优先，数据不出本机。支持 Windows 10/11。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ==================================================================
+   设计令牌 — 严格取自 DESIGN.md（Linear design language）front matter
+   营销站为 dark-only（DESIGN.md「Don't ship a light-mode marketing page」）
+   ================================================================== */
+:root {
+  /* colors */
+  --primary: #5e6ad2;
+  --on-primary: #ffffff;
+  --primary-hover: #828fff;
+  --primary-focus: #5e69d1;
+  --ink: #f7f8f8;
+  --ink-muted: #d0d6e0;
+  --ink-subtle: #8a8f98;
+  --ink-tertiary: #62666d;
+  --canvas: #010102;
+  --surface-1: #0f1011;
+  --surface-2: #141516;
+  --surface-3: #18191a;
+  --surface-4: #191a1b;
+  --hairline: #23252a;
+  --hairline-strong: #34343a;
+  --hairline-tertiary: #3e3e44;
+  --semantic-success: #27a644;
+
+  /* rounded */
+  --r-xs: 4px; --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-xxl: 24px; --r-pill: 9999px;
+
+  /* spacing */
+  --s-xxs: 4px; --s-xs: 8px; --s-sm: 12px; --s-md: 16px; --s-lg: 24px; --s-xl: 32px; --s-xxl: 48px; --s-section: 96px;
+
+  /* typography */
+  --font-sans: "Inter", -apple-system, "SF Pro Display", system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* motion（DESIGN.md 未定义动效，取保守值） */
+  --dur-fast: 120ms;
+  --dur-med: 200ms;
+  --ease-out: cubic-bezier(.22,.61,.36,1);
+
+  --container: 1120px;
+  --nav-h: 56px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 16px); }
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection { background: rgba(94,106,210,.4); }
+a { color: inherit; text-decoration: none; }
+ul { list-style: none; }
+svg { display: block; }
+
+/* ==================================================================
+   通用排版 — 对应 DESIGN.md typography 层级
+   ================================================================== */
+.container { max-width: var(--container); margin: 0 auto; padding: 0 var(--s-xl); }
+
+.eyebrow {
+  font-size: 13px; font-weight: 500; letter-spacing: .4px;
+  color: var(--primary); text-transform: uppercase;
+  margin-bottom: var(--s-md);
+}
+.display-lg {
+  font-size: 56px; font-weight: 600; line-height: 1.10;
+  letter-spacing: -1.8px;
+}
+.display-md {
+  font-size: 40px; font-weight: 600; line-height: 1.15;
+  letter-spacing: -1.0px;
+}
+.headline { font-size: 28px; font-weight: 600; line-height: 1.20; letter-spacing: -.6px; }
+.card-title { font-size: 22px; font-weight: 500; line-height: 1.25; letter-spacing: -.4px; }
+.subhead { font-size: 20px; font-weight: 400; line-height: 1.40; letter-spacing: -.2px; color: var(--ink-muted); }
+.body-lg { font-size: 18px; font-weight: 400; line-height: 1.50; letter-spacing: -.1px; }
+.body { font-size: 16px; font-weight: 400; line-height: 1.50; letter-spacing: -.05px; }
+.body-sm { font-size: 14px; font-weight: 400; line-height: 1.50; }
+.caption { font-size: 12px; font-weight: 400; line-height: 1.40; color: var(--ink-subtle); }
+.mono { font-family: var(--font-mono); font-size: 13px; }
+
+.section { padding: var(--s-section) 0; }
+.section-head { max-width: 640px; margin-bottom: var(--s-xxl); }
+.section-head .subhead { margin-top: var(--s-md); }
+
+/* ==================================================================
+   按钮 — DESIGN.md components.button-*
+   ================================================================== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-xs);
+  font-family: var(--font-sans); font-size: 14px; font-weight: 500; line-height: 1.20;
+  border-radius: var(--r-md); padding: 8px 14px;
+  border: 1px solid transparent; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+.btn:focus-visible { outline: 2px solid rgba(94,105,209,.5); outline-offset: 2px; }
+.btn svg { width: 16px; height: 16px; }
+.btn-lg { padding: 12px 20px; font-size: 15px; }
+.btn-lg svg { width: 18px; height: 18px; }
+
+.btn-primary { background: var(--primary); color: var(--on-primary); }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary:active { background: var(--primary-focus); }
+
+.btn-secondary { background: var(--surface-1); color: var(--ink); border-color: var(--hairline); }
+.btn-secondary:hover { background: var(--surface-2); border-color: var(--hairline-strong); }
+.btn-secondary:active { background: var(--surface-3); }
+
+.btn-tertiary { background: var(--canvas); color: var(--ink); }
+.btn-tertiary:hover { background: var(--surface-1); }
+
+.btn-ghost { background: transparent; color: var(--ink-subtle); }
+.btn-ghost:hover { color: var(--ink); background: var(--surface-1); }
+
+/* status pill — DESIGN.md components.status-badge */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface-2); color: var(--ink-muted);
+  font-size: 12px; line-height: 1.4;
+  border-radius: var(--r-pill); padding: 2px 8px;
+}
+.badge .dot { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--semantic-success); }
+.badge-primary { background: rgba(94,106,210,.12); color: var(--primary); }
+.badge-primary .dot { background: var(--primary); }
+
+/* ==================================================================
+   Top Nav — DESIGN.md components.top-nav（56px sticky）
+   ================================================================== */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--nav-h);
+  background: rgba(1,1,2,.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-med) var(--ease-out);
+}
+.nav.scrolled { border-bottom-color: var(--hairline); }
+.nav-inner {
+  max-width: var(--container); height: 100%; margin: 0 auto; padding: 0 var(--s-xl);
+  display: flex; align-items: center; gap: var(--s-xl);
+}
+.brand { display: flex; align-items: center; gap: var(--s-xs); font-weight: 600; font-size: 15px; letter-spacing: -.2px; }
+.brand-mark {
+  width: 26px; height: 26px; border-radius: var(--r-sm);
+  background: var(--primary); color: var(--on-primary);
+  display: grid; place-items: center; flex: none;
+}
+.brand-mark svg { width: 16px; height: 16px; }
+.brand small { font-size: 12px; font-weight: 400; color: var(--ink-subtle); margin-left: 2px; }
+.nav-links { display: flex; align-items: center; gap: var(--s-xxs); margin-left: auto; }
+.nav-links a {
+  font-size: 14px; color: var(--ink-subtle); padding: 6px 10px; border-radius: var(--r-sm);
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.nav-links a:hover { color: var(--ink); background: var(--surface-1); }
+.nav-actions { display: flex; align-items: center; gap: var(--s-xs); }
+.nav-icon-link {
+  width: 34px; height: 34px; border-radius: var(--r-md);
+  display: grid; place-items: center; color: var(--ink-subtle);
+  border: 1px solid var(--hairline); background: var(--surface-1);
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.nav-icon-link:hover { color: var(--ink); border-color: var(--hairline-strong); }
+.nav-icon-link svg { width: 16px; height: 16px; }
+.nav-burger { display: none; }
+
+/* ==================================================================
+   Hero
+   ================================================================== */
+.hero { padding: calc(var(--nav-h) + 88px) 0 72px; }
+.hero-badge { margin-bottom: var(--s-lg); }
+.hero h1 { max-width: 760px; margin-bottom: var(--s-lg); }
+.hero .lede { max-width: 640px; margin-bottom: var(--s-xl); }
+.hero-cta { display: flex; flex-wrap: wrap; gap: var(--s-sm); margin-bottom: var(--s-lg); }
+.hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-xs) var(--s-md); }
+.hero-meta span { font-size: 13px; color: var(--ink-subtle); display: inline-flex; align-items: center; gap: 6px; }
+.hero-meta svg { width: 14px; height: 14px; color: var(--ink-tertiary); }
+
+/* ==================================================================
+   卡片 — DESIGN.md components.feature-card / product-screenshot-card
+   ================================================================== */
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-md); }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-md); }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-md); }
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: var(--s-lg);
+  transition: background-color var(--dur-med) var(--ease-out), border-color var(--dur-med) var(--ease-out);
+}
+.card:hover { background: var(--surface-2); border-color: var(--hairline-strong); }
+.card-icon {
+  width: 36px; height: 36px; border-radius: var(--r-md);
+  background: var(--surface-2); border: 1px solid var(--hairline);
+  display: grid; place-items: center; color: var(--primary);
+  margin-bottom: var(--s-md);
+}
+.card:hover .card-icon { background: var(--surface-3); }
+.card-icon svg { width: 18px; height: 18px; }
+.card h3 { font-size: 16px; font-weight: 600; letter-spacing: -.2px; margin-bottom: var(--s-xs); }
+.card p { font-size: 14px; color: var(--ink-subtle); }
+
+/* ==================================================================
+   产品预览 — product-screenshot-card（rounded.xl，页面主角）
+   ================================================================== */
+.preview-wrap { position: relative; }
+.screenshot {
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-xl);
+  padding: var(--s-lg);
+  position: relative;
+}
+/* 顶部发丝高光 — DESIGN.md Decorative Depth */
+.screenshot::before, .callout::before {
+  content: ""; position: absolute; top: 0; left: 24px; right: 24px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent);
+  border-radius: 1px;
+}
+.callout::before { left: 12px; right: 12px; }
+
+.app-window {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.app-titlebar {
+  height: 36px; display: flex; align-items: center; gap: var(--s-xs);
+  padding: 0 var(--s-sm);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+.app-dots { display: flex; gap: 6px; }
+.app-dots i { width: 10px; height: 10px; border-radius: var(--r-pill); background: var(--hairline-tertiary); }
+.app-titlebar .title {
+  flex: 1; text-align: center; font-size: 12px; color: var(--ink-subtle);
+  font-family: var(--font-mono);
+}
+.app-body { display: flex; min-height: 420px; }
+
+/* 侧边栏（chrome 暗于内容） */
+.app-sidebar {
+  width: 46px; flex: none;
+  border-right: 1px solid var(--hairline);
+  display: flex; flex-direction: column; align-items: center; gap: var(--s-xxs);
+  padding: var(--s-sm) 0;
+}
+.app-sidebar .si {
+  width: 30px; height: 30px; border-radius: var(--r-sm);
+  display: grid; place-items: center; color: var(--ink-tertiary);
+}
+.app-sidebar .si svg { width: 16px; height: 16px; }
+.app-sidebar .si.active { color: var(--primary); background: var(--surface-2); }
+
+/* 主区 */
+.app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.app-tabs {
+  display: flex; align-items: center; gap: var(--s-xxs);
+  padding: var(--s-xs) var(--s-sm) 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.app-tabs .t {
+  font-size: 12px; color: var(--ink-subtle);
+  padding: 6px 10px; border-radius: var(--r-sm) var(--r-sm) 0 0;
+  border: 1px solid transparent; border-bottom: none;
+  display: flex; align-items: center; gap: 6px;
+}
+.app-tabs .t svg { width: 13px; height: 13px; }
+.app-tabs .t.active { color: var(--ink); background: var(--surface-1); border-color: var(--hairline); }
+.app-tabs .spacer { flex: 1; }
+.app-tabs .port {
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-subtle);
+  display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+}
+.app-tabs .port .dot { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--semantic-success); }
+
+/* 信号表格 */
+.app-table { padding: var(--s-sm); }
+.app-table table { width: 100%; border-collapse: collapse; }
+.app-table th {
+  font-size: 11px; font-weight: 500; color: var(--ink-tertiary); text-align: left;
+  padding: 6px var(--s-xs); border-bottom: 1px solid var(--hairline);
+}
+.app-table td {
+  font-size: 12px; color: var(--ink-muted);
+  padding: 7px var(--s-xs); border-bottom: 1px solid var(--hairline);
+}
+.app-table tr:last-child td { border-bottom: none; }
+.app-table td:first-child { color: var(--ink); font-family: var(--font-mono); font-size: 12px; }
+.app-table .dir { font-size: 11px; padding: 1px 6px; border-radius: var(--r-xs); }
+.app-table .dir.tx { color: var(--primary); background: rgba(94,106,210,.12); }
+.app-table .dir.rx { color: var(--ink-muted); background: var(--surface-2); }
+
+/* 终端 */
+.app-terminal {
+  border-top: 1px solid var(--hairline);
+  padding: var(--s-sm) var(--s-md);
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.8;
+  color: var(--ink-subtle);
+  background: var(--surface-1);
+  min-height: 108px;
+}
+.app-terminal .row { display: flex; gap: var(--s-sm); white-space: nowrap; overflow: hidden; }
+.app-terminal .ts { color: var(--ink-tertiary); flex: none; }
+.app-terminal .tx { color: var(--primary); flex: none; }
+.app-terminal .rx { color: var(--ink-muted); flex: none; }
+.app-terminal .hex { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.app-terminal .cursor { display: inline-block; width: 7px; height: 13px; background: var(--primary); vertical-align: -2px; animation: blink 1.2s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* 标注 callout（桌面端） */
+.callout {
+  position: absolute; width: 216px;
+  background: var(--surface-2); border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-lg); padding: var(--s-sm) var(--s-md);
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+.callout h4 { font-size: 13px; font-weight: 600; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+.callout h4 svg { width: 14px; height: 14px; color: var(--primary); }
+.callout p { font-size: 12px; color: var(--ink-subtle); line-height: 1.5; }
+.callout.c1 { top: 56px; right: -232px; }
+.callout.c2 { bottom: 128px; right: -232px; }
+.callout.c3 { bottom: 8px; left: -232px; }
+.callout .pin {
+  position: absolute; top: 18px; width: 7px; height: 7px; border-radius: var(--r-pill);
+  background: var(--primary); box-shadow: 0 0 0 4px rgba(94,106,210,.18);
+}
+.callout.c1 .pin, .callout.c2 .pin { left: -4px; }
+.callout.c3 .pin { right: -4px; }
+.callout .pin::after {
+  content: ""; position: absolute; top: 3px; width: 120px; height: 1px;
+  background: linear-gradient(90deg, rgba(94,106,210,.5), transparent);
+}
+.callout.c1 .pin::after, .callout.c2 .pin::after { left: 7px; }
+.callout.c3 .pin::after { right: 7px; background: linear-gradient(270deg, rgba(94,106,210,.5), transparent); }
+
+/* ==================================================================
+   应用场景
+   ================================================================== */
+.usecase { display: flex; gap: var(--s-md); align-items: flex-start; }
+.usecase .no {
+  font-family: var(--font-mono); font-size: 13px; color: var(--primary);
+  padding-top: 2px; flex: none;
+}
+
+/* ==================================================================
+   下载区
+   ================================================================== */
+.download-grid { display: grid; grid-template-columns: 5fr 7fr; gap: var(--s-md); align-items: stretch; }
+.download-card {
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: var(--r-lg); padding: var(--s-xl);
+  display: flex; flex-direction: column; position: relative; overflow: hidden;
+}
+.download-card::before {
+  content: ""; position: absolute; top: 0; left: 24px; right: 24px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent);
+}
+.dl-platform { display: flex; align-items: center; gap: var(--s-sm); margin-bottom: var(--s-md); }
+.dl-platform .os-icon {
+  width: 40px; height: 40px; border-radius: var(--r-md);
+  background: var(--surface-2); border: 1px solid var(--hairline);
+  display: grid; place-items: center; color: var(--ink);
+}
+.dl-platform .os-icon svg { width: 20px; height: 20px; }
+.dl-platform h3 { font-size: 18px; font-weight: 600; letter-spacing: -.3px; }
+.dl-platform .caption { display: block; margin-top: 1px; }
+.dl-file {
+  background: var(--canvas); border: 1px solid var(--hairline);
+  border-radius: var(--r-md); padding: var(--s-sm) var(--s-md);
+  margin-bottom: var(--s-md);
+}
+.dl-file .fname { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink); word-break: break-all; }
+.dl-file .fmeta { display: flex; flex-wrap: wrap; gap: var(--s-xs) var(--s-md); margin-top: 6px; }
+.dl-file .fmeta span { font-size: 12px; color: var(--ink-subtle); display: inline-flex; align-items: center; gap: 5px; }
+.dl-file .fmeta svg { width: 12px; height: 12px; color: var(--ink-tertiary); }
+.dl-actions { display: flex; flex-direction: column; gap: var(--s-xs); margin-top: auto; }
+.dl-actions .btn { width: 100%; }
+.dl-note { font-size: 12px; color: var(--ink-tertiary); text-align: center; margin-top: var(--s-xs); }
+
+.install-steps { display: flex; flex-direction: column; gap: var(--s-md); }
+.install-step { display: flex; gap: var(--s-md); }
+.install-step .n {
+  width: 24px; height: 24px; flex: none; border-radius: var(--r-pill);
+  border: 1px solid var(--hairline-strong); background: var(--surface-2);
+  display: grid; place-items: center;
+  font-family: var(--font-mono); font-size: 12px; color: var(--ink-muted);
+}
+.install-step h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.install-step p { font-size: 13px; color: var(--ink-subtle); }
+.install-step .req { display: flex; flex-wrap: wrap; gap: var(--s-xs); margin-top: var(--s-xs); }
+.install-step .req span {
+  font-size: 12px; color: var(--ink-muted); background: var(--surface-2);
+  border: 1px solid var(--hairline); border-radius: var(--r-xs); padding: 2px 8px;
+}
+
+/* ==================================================================
+   文档区
+   ================================================================== */
+.doc-card { display: flex; flex-direction: column; gap: var(--s-sm); min-height: 148px; }
+.doc-card .doc-top { display: flex; align-items: center; justify-content: space-between; }
+.doc-card .doc-kind { font-family: var(--font-mono); font-size: 11px; color: var(--ink-tertiary); }
+.doc-card .doc-link { font-size: 13px; font-weight: 500; color: var(--primary); display: inline-flex; align-items: center; gap: 4px; margin-top: auto; background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font-sans); }
+.doc-card .doc-link svg { width: 14px; height: 14px; transition: transform var(--dur-fast) var(--ease-out); }
+.doc-card.open .doc-link svg { transform: rotate(90deg); }
+.doc-abstract { font-size: 13px; color: var(--ink-subtle); line-height: 1.7; border-top: 1px solid var(--hairline); padding-top: var(--s-sm); }
+.doc-abstract[hidden] { display: none; }
+.docs-all {
+  margin-top: var(--s-md);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-md);
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: var(--r-lg); padding: var(--s-md) var(--s-lg);
+}
+.docs-all p { font-size: 14px; color: var(--ink-subtle); }
+
+/* ==================================================================
+   反馈区
+   ================================================================== */
+.feedback-grid { display: grid; grid-template-columns: 5fr 7fr; gap: var(--s-md); align-items: start; }
+.channel { display: flex; gap: var(--s-md); align-items: flex-start; padding: var(--s-md) var(--s-lg); }
+.channel + .channel { margin-top: var(--s-sm); }
+.channel .card-icon { margin-bottom: 0; flex: none; }
+.channel h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.channel p { font-size: 13px; color: var(--ink-subtle); margin-bottom: var(--s-xs); }
+.channel .ch-link { font-size: 13px; color: var(--primary); display: inline-flex; align-items: center; gap: 4px; }
+.channel .ch-link svg { width: 13px; height: 13px; }
+
+.fb-form { padding: var(--s-xl); }
+.fb-form h3 { font-size: 18px; font-weight: 600; letter-spacing: -.3px; margin-bottom: var(--s-xxs); }
+.fb-form .fb-sub { font-size: 13px; color: var(--ink-subtle); margin-bottom: var(--s-lg); }
+.fb-types { display: flex; flex-wrap: wrap; gap: var(--s-xs); margin-bottom: var(--s-md); }
+.fb-type {
+  font-size: 13px; color: var(--ink-subtle);
+  background: var(--canvas); border: 1px solid var(--hairline);
+  border-radius: var(--r-pill); padding: 6px 14px; cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.fb-type:hover { color: var(--ink); border-color: var(--hairline-strong); }
+.fb-type.selected { background: var(--surface-2); color: var(--ink); border-color: var(--hairline-strong); }
+.fb-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-sm); }
+.fb-field { margin-bottom: var(--s-sm); }
+.fb-field label { display: block; font-size: 13px; color: var(--ink-muted); margin-bottom: 6px; }
+.fb-field input, .fb-field textarea, .fb-field select {
+  width: 100%; background: var(--surface-1); color: var(--ink);
+  border: 1px solid var(--hairline); border-radius: var(--r-md);
+  padding: 8px 12px; font-family: var(--font-sans); font-size: 14px;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.fb-field textarea { min-height: 110px; resize: vertical; line-height: 1.6; }
+.fb-field input::placeholder, .fb-field textarea::placeholder { color: var(--ink-tertiary); }
+.fb-field input:focus, .fb-field textarea:focus, .fb-field select:focus {
+  outline: none; border-color: var(--primary-focus);
+  box-shadow: 0 0 0 2px rgba(94,105,209,.35);
+}
+.fb-submit { display: flex; align-items: center; gap: var(--s-md); margin-top: var(--s-md); }
+.fb-submit .caption { flex: 1; }
+
+/* ==================================================================
+   FAQ
+   ================================================================== */
+.faq-list { max-width: 760px; }
+.faq-item { border-bottom: 1px solid var(--hairline); }
+.faq-item summary {
+  list-style: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-md);
+  padding: var(--s-md) var(--s-xxs);
+  font-size: 15px; font-weight: 500; color: var(--ink);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary:hover { color: var(--primary); }
+.faq-item summary svg {
+  width: 16px; height: 16px; color: var(--ink-subtle); flex: none;
+  transition: transform var(--dur-med) var(--ease-out);
+}
+.faq-item[open] summary svg { transform: rotate(180deg); }
+.faq-item .faq-body { padding: 0 var(--s-xxs) var(--s-md); }
+.faq-item .faq-body p { font-size: 14px; color: var(--ink-subtle); max-width: 640px; }
+
+/* ==================================================================
+   CTA banner — DESIGN.md components.cta-banner
+   ================================================================== */
+.cta-banner {
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: var(--r-lg); padding: var(--s-xxl);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--s-xl); flex-wrap: wrap;
+  position: relative; overflow: hidden;
+}
+.cta-banner::before {
+  content: ""; position: absolute; top: 0; left: 24px; right: 24px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent);
+}
+.cta-banner h2 { font-size: 28px; font-weight: 600; letter-spacing: -.6px; margin-bottom: var(--s-xs); }
+.cta-banner p { font-size: 15px; color: var(--ink-subtle); }
+.cta-banner .btn { flex: none; }
+
+/* ==================================================================
+   Footer — DESIGN.md components.footer
+   ================================================================== */
+.footer { border-top: 1px solid var(--hairline); padding: var(--s-xxl) var(--s-xl) var(--s-lg); margin-top: var(--s-section); }
+.footer-inner { max-width: var(--container); margin: 0 auto; }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: var(--s-xl); margin-bottom: var(--s-xxl); }
+.footer-brand p { font-size: 13px; color: var(--ink-subtle); max-width: 280px; margin: var(--s-sm) 0 var(--s-md); }
+.footer h5 { font-size: 13px; font-weight: 500; color: var(--ink-muted); margin-bottom: var(--s-sm); }
+.footer li { margin-bottom: var(--s-xs); }
+.footer li a { font-size: 13px; color: var(--ink-subtle); transition: color var(--dur-fast) var(--ease-out); }
+.footer li a:hover { color: var(--ink); }
+.footer-bottom {
+  border-top: 1px solid var(--hairline); padding-top: var(--s-lg);
+  display: flex; flex-wrap: wrap; gap: var(--s-sm); align-items: center; justify-content: space-between;
+}
+.footer-bottom .caption { font-size: 12px; color: var(--ink-tertiary); }
+
+/* ==================================================================
+   Reveal 动效（克制）
+   ================================================================== */
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .5s var(--ease-out), transform .5s var(--ease-out); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .app-terminal .cursor { animation: none; }
+  html { scroll-behavior: auto; }
+}
+
+/* ==================================================================
+   响应式 — DESIGN.md Responsive Behavior
+   ================================================================== */
+@media (min-width: 1560px) {
+  .callout { display: block; }
+}
+@media (max-width: 1559px) {
+  .callout { display: none; }
+}
+@media (max-width: 1024px) {
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .download-grid, .feedback-grid { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  :root { --s-section: 64px; }
+  .container { padding: 0 var(--s-md); }
+  .nav-links { display: none; }
+  .nav-links.open {
+    display: flex; flex-direction: column; align-items: stretch;
+    position: fixed; top: var(--nav-h); left: 0; right: 0;
+    background: var(--surface-1); border-bottom: 1px solid var(--hairline);
+    padding: var(--s-sm); gap: 2px;
+  }
+  .nav-links.open a { padding: 10px 12px; font-size: 15px; }
+  .nav-burger { display: grid; }
+  .nav-inner { gap: var(--s-sm); }
+  .nav-actions .btn-primary { display: none; }
+  .brand small { display: none; }
+  .hero { padding: calc(var(--nav-h) + 56px) 0 48px; }
+  .display-lg { font-size: 36px; letter-spacing: -1.2px; }
+  .display-md { font-size: 28px; letter-spacing: -.6px; }
+  .subhead { font-size: 17px; }
+  .grid-3, .grid-2, .grid-4 { grid-template-columns: 1fr; }
+  .fb-row { grid-template-columns: 1fr; }
+  .cta-banner { padding: var(--s-xl); }
+  .cta-banner .btn { width: 100%; }
+  .footer-grid { grid-template-columns: 1fr; gap: var(--s-lg); }
+  .app-sidebar { display: none; }
+  .app-body { min-height: 340px; }
+  .docs-all { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== Icon Sprite（取自 assets/sprite.svg · 24×24 · stroke 1.75） ===== -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <defs>
+    <symbol id="i-workspace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></symbol>
+    <symbol id="i-serial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12 L6 12 L6 6 L10 6 L10 18 L14 18 L14 9 L18 9 L18 12 L22 12"/></symbol>
+    <symbol id="i-protocol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5" rx="0.5"/><path d="M9 3 L9 6 M12 3 L12 6 M15 3 L15 6"/><path d="M9 18 L9 21 M12 18 L12 21 M15 18 L15 21"/><path d="M3 9 L6 9 M3 12 L6 12 M3 15 L6 15"/><path d="M18 9 L21 9 M18 12 L21 12 M18 15 L21 15"/></symbol>
+    <symbol id="i-audit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 L4 5 L4 11 C4 16 7.5 20.2 12 21.8 C16.5 20.2 20 16 20 11 L20 5 Z"/><path d="M8.5 12 L11 14.5 L15.5 9.5"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="7.5" ry="2.5"/><path d="M4.5 5 V12 C4.5 13.4 7.86 14.5 12 14.5 C16.14 14.5 19.5 13.4 19.5 12 V5"/><path d="M4.5 12 V19 C4.5 20.4 7.86 21.5 12 21.5 C16.14 21.5 19.5 20.4 19.5 19 V12"/></symbol>
+    <symbol id="i-frames" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9 L10 9"/><path d="M5 12 L8 12"/><path d="M5 15 L7 15"/><path d="M19 9 L14 9"/><path d="M19 12 L16 12"/><path d="M19 15 L17 15"/><circle cx="12" cy="12" r="1.5"/></symbol>
+    <symbol id="i-parse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5 L4 12 L9 19"/><path d="M15 5 L20 12 L15 19"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12 L19 12"/><path d="M12 5 L19 12 L12 19"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12 L10 17 L19 7"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9 L12 15 L18 9"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21 L16 21"/><path d="M12 17 L12 21"/></symbol>
+    <symbol id="i-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2 L14 8 L20 8"/><path d="M14 2 L6 2 C4.9 2 4 2.9 4 4 L4 20 C4 21.1 4.9 22 6 22 L18 22 C19.1 22 20 20.1 20 20 L20 8 Z"/><path d="M8 12 L16 12"/><path d="M8 16 L14 16"/></symbol>
+    <symbol id="i-help-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.09 9 A3 3 0 0 1 12 6.5 C13.6 6.5 14.9 7.6 15 9.1 C15.1 10.7 13.5 11.5 12.5 12.1 C12 12.4 11.5 12.8 11.5 13.5 L11.5 14"/><circle cx="12" cy="17" r="0.5" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-message-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21 L12 15 L8 17"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="8" r="3.25"/><path d="M3 19.5 C3 15.9 5.8 13.5 9.5 13.5 C11.7 13.5 13.6 14.4 14.7 15.8"/><circle cx="17" cy="9" r="2.25"/><path d="M14 19.5 C14 17 15.8 15.5 18 15.5 C20.2 15.5 22 17 22 19.5"/></symbol>
+    <symbol id="i-refresh-cw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12 A9 9 0 0 0 12 3 C8.5 3 5.5 4.5 3.5 7"/><path d="M3 3 V7 H7"/><path d="M3 12 A9 9 0 0 0 12 21 C15.5 21 18.5 19.5 20.5 17"/><path d="M21 21 V17 H17"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15 A1.65 1.65 0 0 0 18 15.34 A1.65 1.65 0 0 0 17 16.3 A1.65 1.65 0 0 0 17 17.65 A1.65 1.65 0 0 0 18 18.6 L18 21"/><path d="M19.4 9 A1.65 1.65 0 0 1 18 8.66 A1.65 1.65 0 0 1 17 7.7 A1.65 1.65 0 0 1 17 6.35 A1.65 1.65 0 0 1 18 5.4 L18 3"/><path d="M4.6 15 A1.65 1.65 0 0 1 6 15.34 A1.65 1.65 0 0 1 7 16.3 A1.65 1.65 0 0 1 7 17.65 A1.65 1.65 0 0 1 6 18.6 L6 21"/><path d="M4.6 9 A1.65 1.65 0 0 0 6 8.66 A1.65 1.65 0 0 0 7 7.7 A1.65 1.65 0 0 0 7 6.35 A1.65 1.65 0 0 0 6 5.4 L6 3"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2.5 L2.5 9.5 L11 13 L13.5 21.5 Z"/><path d="M21.5 2.5 L11 13"/></symbol>
+    <symbol id="i-loop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12 A8 8 0 1 1 16.5 6"/><path d="M16.5 3 L16.5 7 L13 7"/></symbol>
+    <!-- Windows logo（下载平台标识） -->
+    <symbol id="i-windows" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 5.5 L10.2 4.6 L10.2 11.2 L3 11.2 Z"/><path d="M11.5 4.4 L21 3 L21 11.2 L11.5 11.2 Z"/><path d="M3 12.8 L10.2 12.8 L10.2 19.4 L3 18.5 Z"/><path d="M11.5 12.8 L21 12.8 L21 21 L11.5 19.6 Z"/></symbol>
+    <!-- 代码仓库 -->
+    <symbol id="i-gitee" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5 L13.5 4.5 C14.6 4.5 15.5 5.4 15.5 6.5 L15.5 20 L7.5 17.2 L4.5 20 Z"/><path d="M15.5 8 L19 8 C20.1 8 21 8.9 21 10 L21 18.5 L15.5 20.8"/></symbol>
+    <!-- Mail -->
+    <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7 L12 13 L21 7"/></symbol>
+    <!-- Download -->
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L12 15"/><path d="M7 10 L12 15 L17 10"/><path d="M4 19 L20 19"/></symbol>
+    <!-- Menu -->
+    <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7 L20 7"/><path d="M4 12 L20 12"/><path d="M4 17 L20 17"/></symbol>
+    <!-- Sparkle（AI） -->
+    <symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L13.8 9.2 L20 11 L13.8 12.8 L12 19 L10.2 12.8 L4 11 L10.2 9.2 Z"/><path d="M18.5 16.5 L19.2 18.8 L21.5 19.5 L19.2 20.2 L18.5 22.5 L17.8 20.2 L15.5 19.5 L17.8 18.8 Z"/></symbol>
+    <!-- CPU -->
+    <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2 L9 5 M15 2 L15 5 M9 19 L9 22 M15 19 L15 22 M2 9 L5 9 M2 15 L5 15 M19 9 L22 9 M19 15 L22 15"/></symbol>
+    <!-- External link -->
+    <symbol id="i-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4 L20 4 L20 10"/><path d="M20 4 L11 13"/><path d="M18 14 L18 19 C18 19.55 17.55 20 17 20 L5 20 C4.45 20 4 19.55 4 19 L4 7 C4 6.45 4.45 6 5 6 L10 6"/></symbol>
+  </defs>
+</svg>
+
+<!-- ===== Top Nav ===== -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top">
+      <span class="brand-mark"><svg><use href="#i-serial"/></svg></span>
+      波特律动 <small>BaudLab</small>
+    </a>
+    <div class="nav-links" id="navLinks">
+      <a href="#features">功能特性</a>
+      <a href="#preview">产品预览</a>
+      <a href="#usecases">应用场景</a>
+      <a href="#download">下载</a>
+      <a href="#docs">文档</a>
+      <a href="#feedback">反馈</a>
+    </div>
+    <div class="nav-actions">
+      <a class="nav-icon-link" href="https://gitee.com/ALVAN1819184/alvan-uart-tool-privacy" target="_blank" rel="noopener" aria-label="Gitee 仓库"><svg><use href="#i-gitee"/></svg></a>
+      <a class="btn btn-primary" href="#download"><svg><use href="#i-download"/></svg>免费下载</a>
+      <button class="btn btn-ghost nav-burger" id="burger" aria-label="菜单"><svg><use href="#i-menu"/></svg></button>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+
+<!-- ===== Hero ===== -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <span class="badge badge-primary"><span class="dot"></span>波特律动 BaudLab · v0.0.40 稳定版 · 2025-09-29 发布</span>
+    </div>
+    <h1 class="display-lg">串口协议<br>一站式管理与调试</h1>
+    <p class="subhead lede">从协议配置、信号定义到实时调试、文件传输——用一个工具覆盖嵌入式开发全流程。本地优先设计，所有协议数据始终留在你的机器上。</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary btn-lg" href="#download"><svg><use href="#i-download"/></svg>免费下载 Windows 版</a>
+      <a class="btn btn-secondary btn-lg" href="#docs"><svg><use href="#i-file-text"/></svg>查看文档</a>
+    </div>
+    <div class="hero-meta">
+      <span><svg><use href="#i-check"/></svg>Windows 10 / 11 · x64</span>
+      <span><svg><use href="#i-check"/></svg>安装包 65.4 MB</span>
+      <span><svg><use href="#i-check"/></svg>免费使用</span>
+      <span><svg><use href="#i-check"/></svg>MIT License</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 核心功能 ===== -->
+<section class="section" id="features">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">核心功能</p>
+      <h2 class="display-md">为串口调试而生的完整工具链</h2>
+      <p class="subhead">协议配置、实时调试、文件传输、AI 助手——把散落在各个脚本里的工作，收进一个桌面应用。</p>
+    </div>
+    <div class="grid-3">
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-protocol"/></svg></div>
+        <h3>可视化协议配置</h3>
+        <p>图形化定义帧结构、信号与位域，协议模板一键复用，告别手写解析代码。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-serial"/></svg></div>
+        <h3>实时串口调试</h3>
+        <p>收发数据实时监视，Hex / 文本双视图切换，毫秒级时间戳，通信过程一目了然。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-frames"/></svg></div>
+        <h3>列表发送</h3>
+        <p>编排多条指令按周期自动发送，支持变量注入与延时控制，回归测试更省心。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-file-text"/></svg></div>
+        <h3>文件传输</h3>
+        <p>内置 AFT-1 文件传输协议，支持分包、校验与传输进度管理，大文件稳定可达。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-sparkle"/></svg></div>
+        <h3>AI 助手</h3>
+        <p>自然语言描述需求，自动生成解析规则与调试指令，复杂协议也能快速上手。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-cpu"/></svg></div>
+        <h3>MCP 接入</h3>
+        <p>内置 MCP 服务器，让 Claude Code、Cursor 等 AI 编码工具直接读写串口、查询协议。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-parse"/></svg></div>
+        <h3>帧编解码引擎</h3>
+        <p>可扩展的解析引擎，自定义任意二进制协议格式，大小端、位域、校验灵活配置。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-database"/></svg></div>
+        <h3>本地数据库</h3>
+        <p>SQLite 本地存储协议与信号数据，离线可用，敏感数据不出本机。</p>
+      </div>
+      <div class="card reveal">
+        <div class="card-icon"><svg><use href="#i-audit"/></svg></div>
+        <h3>审核队列</h3>
+        <p>协议变更留痕审计，支持审核工作流，团队协作与版本追溯更安心。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 产品预览 ===== -->
+<section class="section" id="preview">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">产品预览</p>
+      <h2 class="display-md">专业级的工作界面</h2>
+      <p class="subhead">信号表格、实时终端、AI 助手同屏协作——界面为效率而设计，装上就能用。</p>
+    </div>
+
+    <div class="preview-wrap reveal">
+      <div class="screenshot">
+        <div class="app-window">
+          <div class="app-titlebar">
+            <div class="app-dots"><i></i><i></i><i></i></div>
+            <span class="title">BaudLab — 协议配置</span>
+            <div class="app-dots" style="visibility:hidden"><i></i><i></i><i></i></div>
+          </div>
+          <div class="app-body">
+            <aside class="app-sidebar">
+              <span class="si active" title="协议配置"><svg><use href="#i-protocol"/></svg></span>
+              <span class="si" title="串口调试"><svg><use href="#i-serial"/></svg></span>
+              <span class="si" title="列表发送"><svg><use href="#i-frames"/></svg></span>
+              <span class="si" title="文件发送"><svg><use href="#i-send"/></svg></span>
+              <span class="si" title="AI 助手"><svg><use href="#i-sparkle"/></svg></span>
+              <span class="si" title="审核队列"><svg><use href="#i-audit"/></svg></span>
+              <span class="si" title="数据库"><svg><use href="#i-database"/></svg></span>
+              <span class="si" title="设置"><svg><use href="#i-settings"/></svg></span>
+            </aside>
+            <div class="app-main">
+              <div class="app-tabs">
+                <span class="t active"><svg><use href="#i-protocol"/></svg>协议配置</span>
+                <span class="t"><svg><use href="#i-monitor"/></svg>信号预览</span>
+                <span class="t"><svg><use href="#i-serial"/></svg>调试器</span>
+                <span class="spacer"></span>
+                <span class="port"><span class="dot"></span>COM3 · 115200 8N1</span>
+              </div>
+              <div class="app-table">
+                <table>
+                  <thead>
+                    <tr><th>信号</th><th>方向</th><th>类型</th><th>长度</th><th>说明</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>temp_value</td><td><span class="dir rx">上报</span></td><td>uint16</td><td>2 B</td><td>温度值 ×0.1 ℃</td></tr>
+                    <tr><td>fire_power</td><td><span class="dir tx">下发</span></td><td>uint16</td><td>2 B</td><td>火力档位 0–2100 W</td></tr>
+                    <tr><td>stir_speed</td><td><span class="dir tx">下发</span></td><td>uint8</td><td>1 B</td><td>搅拌速度 %</td></tr>
+                    <tr><td>work_mode</td><td><span class="dir tx">下发</span></td><td>uint8</td><td>1 B</td><td>工作模式枚举</td></tr>
+                    <tr><td>err_code</td><td><span class="dir rx">上报</span></td><td>uint8</td><td>1 B</td><td>故障码</td></tr>
+                    <tr><td>checksum</td><td><span class="dir rx">校验</span></td><td>uint8</td><td>1 B</td><td>帧末累加和</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="app-terminal">
+                <div class="row"><span class="ts">12:00:01.234</span><span class="tx">TX →</span><span class="hex">AA 55 01 10 00 00 00 0C&nbsp;&nbsp;&nbsp;// 查询设备状态</span></div>
+                <div class="row"><span class="ts">12:00:01.256</span><span class="rx">RX ←</span><span class="hex">AA 55 81 10 00 1C 00 64 00 00 00 00 00 3B</span></div>
+                <div class="row"><span class="ts">12:00:01.258</span><span class="rx">RX ←</span><span class="hex">✔ 帧解析完成 · temp_value=28.0℃ · fire_power=100W · checksum 校验通过</span></div>
+                <div class="row"><span class="ts">12:00:02.234</span><span class="tx">TX →</span><span class="hex">AA 55 01 20 00 32 00 64 00 00 00 00 00 B6<span class="cursor"></span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout c1"><span class="pin"></span>
+        <h4><svg><use href="#i-protocol"/></svg>信号表格</h4>
+        <p>帧结构与位域可视化编辑，协议即改即生效。</p>
+      </div>
+      <div class="callout c2"><span class="pin"></span>
+        <h4><svg><use href="#i-serial"/></svg>实时终端</h4>
+        <p>收发日志毫秒时间戳，Hex / 文本双视图。</p>
+      </div>
+      <div class="callout c3"><span class="pin"></span>
+        <h4><svg><use href="#i-sparkle"/></svg>AI 助手</h4>
+        <p>描述需求即可生成解析规则与调试指令。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 应用场景 ===== -->
+<section class="section" id="usecases">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">应用场景</p>
+      <h2 class="display-md">覆盖嵌入式开发的每个环节</h2>
+      <p class="subhead">从新板联调到产线测试，从协议逆向到教学实验。</p>
+    </div>
+    <div class="grid-2">
+      <div class="card usecase reveal">
+        <span class="no">01</span>
+        <div>
+          <h3>嵌入式开发联调</h3>
+          <p>新板验证阶段快速搭建协议模板，实时观察设备上报数据，指令下发即调即试。</p>
+        </div>
+      </div>
+      <div class="card usecase reveal">
+        <span class="no">02</span>
+        <div>
+          <h3>协议逆向分析</h3>
+          <p>未知协议逐帧解析、位域标注，快速还原通信格式，沉淀为可复用的协议模板。</p>
+        </div>
+      </div>
+      <div class="card usecase reveal">
+        <span class="no">03</span>
+        <div>
+          <h3>产线测试</h3>
+          <p>列表发送编排测试指令序列，周期执行、结果比对，批量验证产品功能。</p>
+        </div>
+      </div>
+      <div class="card usecase reveal">
+        <span class="no">04</span>
+        <div>
+          <h3>教学与实验</h3>
+          <p>协议结构可视化呈现，抽象的帧格式、位域概念一眼看懂，课堂演示利器。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 下载 ===== -->
+<section class="section" id="download">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">下载</p>
+      <h2 class="display-md">获取波特律动</h2>
+      <p class="subhead">当前稳定版本 v0.0.40，Windows 平台开箱即用。</p>
+    </div>
+
+    <div class="download-grid">
+      <div class="download-card reveal">
+        <div class="dl-platform">
+          <span class="os-icon"><svg><use href="#i-windows"/></svg></span>
+          <div>
+            <h3>Windows</h3>
+            <span class="caption">10 / 11 · 64 位</span>
+          </div>
+          <span class="badge" style="margin-left:auto"><span class="dot"></span>最新</span>
+        </div>
+        <div class="dl-file">
+          <div class="fname">SerialProtocolManager-Setup-0.0.40.exe</div>
+          <div class="fmeta">
+            <span><svg><use href="#i-download"/></svg>65.4 MB</span>
+            <span><svg><use href="#i-cpu"/></svg>NSIS 安装包 · x64</span>
+            <span><svg><use href="#i-loop"/></svg>v0.0.40 · 2025-09-29</span>
+          </div>
+        </div>
+        <div class="dl-actions">
+          <a class="btn btn-primary btn-lg" href="https://gitee.com/ALVAN1819184/alvan-uart-tool-privacy/releases/download/latest/SerialProtocolManager-Setup-0.0.40.exe" target="_blank" rel="noopener">
+            <svg><use href="#i-download"/></svg>立即下载 v0.0.40
+          </a>
+          <a class="btn btn-secondary" href="https://gitee.com/ALVAN1819184/alvan-uart-tool-privacy/releases" target="_blank" rel="noopener">
+            <svg><use href="#i-external"/></svg>历史版本
+          </a>
+        </div>
+        <p class="dl-note">下载将跳转至 Gitee Releases 页面</p>
+      </div>
+
+      <div class="card reveal" style="padding: var(--s-xl);">
+        <h3 class="card-title" style="margin-bottom: var(--s-lg);">安装说明</h3>
+        <div class="install-steps">
+          <div class="install-step">
+            <span class="n">1</span>
+            <div>
+              <h4>下载安装包</h4>
+              <p>点击左侧按钮获取 <span class="mono" style="color:var(--ink-muted)">SerialProtocolManager-Setup-0.0.40.exe</span>。</p>
+            </div>
+          </div>
+          <div class="install-step">
+            <span class="n">2</span>
+            <div>
+              <h4>运行安装向导</h4>
+              <p>双击安装包，按向导提示选择安装目录，完成安装。支持后期更改安装位置。</p>
+              <div class="req"><span>Windows 10 / 11 64 位</span><span>约 200 MB 可用空间</span><span>无需管理员依赖</span></div>
+            </div>
+          </div>
+          <div class="install-step">
+            <span class="n">3</span>
+            <div>
+              <h4>启动与更新</h4>
+              <p>安装完成后即可启动。应用内置更新检查，新版本发布时会自动提醒，一键升级。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 文档 ===== -->
+<section class="section" id="docs">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">文档</p>
+      <h2 class="display-md">从入门到协议规范</h2>
+      <p class="subhead">上手指南、接入文档与协议规范，随取随用。应用内「帮助」面板也可随时查阅。</p>
+    </div>
+    <div class="grid-2">
+      <div class="card doc-card reveal">
+        <div class="doc-top">
+          <div class="card-icon" style="margin-bottom:0"><svg><use href="#i-help-circle"/></svg></div>
+          <span class="doc-kind">GUIDE</span>
+        </div>
+        <h3>快速上手指南</h3>
+        <p>安装、连接串口、创建第一个协议配置——十分钟完成首次联调。</p>
+        <button class="doc-link" type="button">查看摘要<svg><use href="#i-arrow-right"/></svg></button>
+        <div class="doc-abstract" hidden>
+          1. 安装后进入「协议配置」，选择串口号与波特率（如 COM3 · 115200 8N1）。<br>
+          2. 新建协议模板，定义帧头、信号与位域，保存后即时生效。<br>
+          3. 打开「调试器」实时观察收发数据，或进入「列表发送」编排指令序列。<br>
+          完整图文指南内置在应用的「帮助」面板，随时可查。
+        </div>
+      </div>
+      <div class="card doc-card reveal">
+        <div class="doc-top">
+          <div class="card-icon" style="margin-bottom:0"><svg><use href="#i-cpu"/></svg></div>
+          <span class="doc-kind">INTEGRATION</span>
+        </div>
+        <h3>MCP 接入指南</h3>
+        <p>将串口能力接入 Claude Code、Cursor 等 AI 编码助手的完整配置步骤。</p>
+        <button class="doc-link" type="button">查看摘要<svg><use href="#i-arrow-right"/></svg></button>
+        <div class="doc-abstract" hidden>
+          在应用「设置」中开启内置 MCP 服务器，复制生成的 stdio 端点配置，粘贴到 AI 客户端的 MCP 配置文件中即可。连接后，AI 助手可直接查询协议模板、读取串口数据、发送调试指令。完整配置步骤与常见问题见仓库文档目录。
+        </div>
+      </div>
+      <div class="card doc-card reveal">
+        <div class="doc-top">
+          <div class="card-icon" style="margin-bottom:0"><svg><use href="#i-file-text"/></svg></div>
+          <span class="doc-kind">PROTOCOL</span>
+        </div>
+        <h3>文件传输协议 AFT-1</h3>
+        <p>分包格式、校验机制与进度管理的完整规范，二次开发必备。</p>
+        <button class="doc-link" type="button">查看摘要<svg><use href="#i-arrow-right"/></svg></button>
+        <div class="doc-abstract" hidden>
+          AFT-1 面向串口大文件传输设计：应用层分包 + 帧序号 + 累加和校验，接收端按序号重组并校验完整性，支持传输进度上报与中断续传协商。帧格式字段定义与状态机详见仓库中的协议规范文档。
+        </div>
+      </div>
+      <div class="card doc-card reveal">
+        <div class="doc-top">
+          <div class="card-icon" style="margin-bottom:0"><svg><use href="#i-audit"/></svg></div>
+          <span class="doc-kind">ARCHITECTURE</span>
+        </div>
+        <h3>架构与安全分析</h3>
+        <p>本地优先架构设计、数据边界与安全特性说明。</p>
+        <button class="doc-link" type="button">查看摘要<svg><use href="#i-arrow-right"/></svg></button>
+        <div class="doc-abstract" hidden>
+          工具遵循本地优先原则：协议与信号数据存储于本机 SQLite，不经过任何云端同步；AI 助手能力可按需配置，数据边界可控。架构分层、进程模型与安全边界分析详见仓库文档目录。
+        </div>
+      </div>
+    </div>
+
+    <div class="docs-all reveal">
+      <p>完整文档随应用内置（帮助面板），并可在 Gitee 仓库 docs 目录查阅。</p>
+      <a class="btn btn-secondary" href="#download"><svg><use href="#i-download"/></svg>下载后查看完整文档</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 反馈 ===== -->
+<section class="section" id="feedback">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">反馈</p>
+      <h2 class="display-md">遇到问题？我们在线</h2>
+      <p class="subhead">Bug 反馈、功能建议、使用疑问——每一条都会被看到。</p>
+    </div>
+
+    <div class="feedback-grid">
+      <div class="reveal">
+        <div class="card channel">
+          <span class="card-icon"><svg><use href="#i-message-square"/></svg></span>
+          <div>
+            <h4>应用内反馈</h4>
+            <p>设置 → 反馈，直达开发团队，自动附带运行环境信息。</p>
+            <span class="caption">推荐方式 · 响应最快</span>
+          </div>
+        </div>
+        <div class="card channel">
+          <span class="card-icon"><svg><use href="#i-gitee"/></svg></span>
+          <div>
+            <h4>Gitee Issues</h4>
+            <p>公开问题跟踪，提交 Bug 或功能建议，进度透明可查。</p>
+            <a class="ch-link" href="https://gitee.com/ALVAN1819184/alvan-uart-tool-privacy/issues" target="_blank" rel="noopener">前往 Issues<svg><use href="#i-arrow-right"/></svg></a>
+          </div>
+        </div>
+        <div class="card channel">
+          <span class="card-icon"><svg><use href="#i-mail"/></svg></span>
+          <div>
+            <h4>邮件反馈</h4>
+            <p>不便公开的问题，通过右侧表单发送，我们会回复到你的邮箱。</p>
+            <span class="caption">不会收集任何额外信息</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card fb-form reveal">
+        <h3>提交反馈</h3>
+        <p class="fb-sub">填写以下表单，将通过邮件客户端发送给开发团队。</p>
+        <div class="fb-types" id="fbTypes">
+          <button class="fb-type selected" data-type="Bug 反馈">Bug 反馈</button>
+          <button class="fb-type" data-type="功能建议">功能建议</button>
+          <button class="fb-type" data-type="使用问题">使用问题</button>
+          <button class="fb-type" data-type="其他">其他</button>
+        </div>
+        <form id="fbForm">
+          <div class="fb-row">
+            <div class="fb-field">
+              <label for="fbTitle">标题</label>
+              <input id="fbTitle" type="text" placeholder="一句话概括问题" required>
+            </div>
+            <div class="fb-field">
+              <label for="fbContact">联系邮箱（选填）</label>
+              <input id="fbContact" type="email" placeholder="方便我们回复你">
+            </div>
+          </div>
+          <div class="fb-field">
+            <label for="fbDetail">详细描述</label>
+            <textarea id="fbDetail" placeholder="请描述问题现象、复现步骤、版本号（如 v0.0.40）与操作系统…" required></textarea>
+          </div>
+          <div class="fb-submit">
+            <button class="btn btn-primary" type="submit"><svg><use href="#i-send"/></svg>发送反馈</button>
+            <span class="caption">不会收集任何额外信息</span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="section" id="faq" style="padding-top: 0;">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">常见问题</p>
+      <h2 class="display-md">你可能想知道</h2>
+    </div>
+    <div class="faq-list reveal">
+      <details class="faq-item">
+        <summary>工具是否收费？<svg><use href="#i-chevron-down"/></svg></summary>
+        <div class="faq-body"><p>完全免费，且以 MIT License 开源。你可以自由使用、修改和分发。</p></div>
+      </details>
+      <details class="faq-item">
+        <summary>支持 macOS 或 Linux 吗？<svg><use href="#i-chevron-down"/></svg></summary>
+        <div class="faq-body"><p>当前版本面向 Windows 10/11（x64）。macOS 与 Linux 支持已在路线图上，欢迎通过反馈渠道投票。</p></div>
+      </details>
+      <details class="faq-item">
+        <summary>协议数据存储在哪里？会同步到云端吗？<svg><use href="#i-chevron-down"/></svg></summary>
+        <div class="faq-body"><p>协议与信号数据默认存储在本地 SQLite 数据库中，完全离线可用。工具遵循本地优先原则，未经确认不会上传任何数据。</p></div>
+      </details>
+      <details class="faq-item">
+        <summary>如何获得版本更新？<svg><use href="#i-chevron-down"/></svg></summary>
+        <div class="faq-body"><p>应用内置更新检查，启动时若发现新版本会提醒你一键升级。也可以随时在本页「下载」区或 Gitee Releases 获取最新安装包。</p></div>
+      </details>
+      <details class="faq-item">
+        <summary>可以把协议接入我自己的 AI 工作流吗？<svg><use href="#i-chevron-down"/></svg></summary>
+        <div class="faq-body"><p>可以。工具内置 MCP 服务器，任何支持 MCP 的 AI 客户端（如 Claude Code、Cursor）都能直接查询协议、读写串口。详见「MCP 接入指南」。</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA Banner ===== -->
+<section class="section" style="padding-top: 0;">
+  <div class="container">
+    <div class="cta-banner reveal">
+      <div>
+        <h2>准备好提升串口调试效率了吗？</h2>
+        <p>免费下载，十分钟完成第一次协议联调。</p>
+      </div>
+      <a class="btn btn-primary btn-lg" href="https://gitee.com/ALVAN1819184/alvan-uart-tool-privacy/releases/download/latest/SerialProtocolManager-Setup-0.0.40.exe" target="_blank" rel="noopener"><svg><use href="#i-download"/></svg>免费下载 v0.0.40</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ===== Footer ===== -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="#top">
+          <span class="brand-mark"><svg><use href="#i-serial"/></svg></span>
+          波特律动 <small>BaudLab</small>
+        </a>
+        <p>一站式串口协议管理与调试工具。本地优先，数据不出本机。</p>
+        <span class="badge"><span class="dot"></span>v0.0.40 · 运行正常</span>
+      </div>
+      <div>
+        <h5>产品</h5>
+        <ul>
+          <li><a href="#features">功能特性</a></li>
+          <li><a href="#preview">产品预览</a></li>
+          <li><a href="#download">下载</a></li>
+          <li><a href="https://gitee.com/ALVAN1819184/alvan-uart-tool-privacy/releases" target="_blank" rel="noopener">更新日志</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>资源</h5>
+        <ul>
+          <li><a href="#docs">快速上手</a></li>
+          <li><a href="#docs">MCP 接入指南</a></li>
+          <li><a href="#docs">AFT-1 协议</a></li>
+          <li><a href="#docs">全部文档</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>支持</h5>
+        <ul>
+          <li><a href="#feedback">意见反馈</a></li>
+          <li><a href="https://gitee.com/ALVAN1819184/alvan-uart-tool-privacy/issues" target="_blank" rel="noopener">Gitee Issues</a></li>
+          <li><a href="#faq">常见问题</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="caption">© 2025–2026 波特律动 BaudLab · MIT License</span>
+      <span class="caption">Built with Electron · 本地优先设计</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  /* Nav 滚动态 */
+  var nav = document.getElementById('nav');
+  function onScroll() { nav.classList.toggle('scrolled', window.scrollY > 8); }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  /* 移动端菜单 */
+  var burger = document.getElementById('burger');
+  var navLinks = document.getElementById('navLinks');
+  burger.addEventListener('click', function () { navLinks.classList.toggle('open'); });
+  navLinks.addEventListener('click', function (e) {
+    if (e.target.tagName === 'A') navLinks.classList.remove('open');
+  });
+
+  /* Reveal on scroll（克制） */
+  var els = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    els.forEach(function (el) { io.observe(el); });
+  } else {
+    els.forEach(function (el) { el.classList.add('in'); });
+  }
+  /* 兜底：3s 后仍未触发的元素直接显示，保证任何环境下内容可见 */
+  setTimeout(function () {
+    els.forEach(function (el) { el.classList.add('in'); });
+  }, 3000);
+
+  /* 反馈表单：类型选择 + mailto 组装（邮箱拆串拼接，避免明文爬取） */
+  var MAIL_USER = 'alvan1819184', MAIL_HOST = '163.com';
+  var typesBox = document.getElementById('fbTypes');
+  var currentType = 'Bug 反馈';
+  typesBox.addEventListener('click', function (e) {
+    var btn = e.target.closest('.fb-type');
+    if (!btn) return;
+    typesBox.querySelectorAll('.fb-type').forEach(function (b) { b.classList.remove('selected'); });
+    btn.classList.add('selected');
+    currentType = btn.dataset.type;
+  });
+
+  var form = document.getElementById('fbForm');
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var title = document.getElementById('fbTitle').value.trim();
+    var contact = document.getElementById('fbContact').value.trim();
+    var detail = document.getElementById('fbDetail').value.trim();
+    if (!title || !detail) return;
+    var subject = '[波特律动 BaudLab][' + currentType + '] ' + title;
+    var body = '反馈类型：' + currentType +
+      '\n标题：' + title +
+      '\n联系邮箱：' + (contact || '未提供') +
+      '\n\n详细描述：\n' + detail +
+      '\n\n—\n版本：v0.0.40';
+    window.location.href = 'mailto:' + MAIL_USER + '@' + MAIL_HOST +
+      '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  });
+
+  /* 文档卡摘要展开 */
+  document.querySelectorAll('.doc-card .doc-link').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var card = btn.closest('.doc-card');
+      var abs = card.querySelector('.doc-abstract');
+      var open = abs.hidden;
+      abs.hidden = !open;
+      card.classList.toggle('open', open);
+      btn.firstChild.textContent = open ? '收起摘要' : '查看摘要';
+    });
+  });
+})();
+</script>
+</body>
+</html>
