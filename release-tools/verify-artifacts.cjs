@@ -27,7 +27,9 @@ function verify(directory, version, owner, repo, prefix) {
   const pkg = JSON.parse(asar.extractFile(archive, 'package.json').toString());
   assert(pkg.version === version && pkg.name === 'serial-protocol-manager', 'asar 版本或安装身份不匹配');
   for (const name of ['main.js', 'preload.js', 'update-controller.js', 'db-schema.js', 'default-protocol-data.js', 'dist/renderer/index.html']) {
-    assert(asar.extractFile(archive, name).length > 0, `asar 缺少 ${name}`);
+    // @electron/asar 的 extractFile 在 Windows 上按平台分隔符解析嵌套路径，
+    // 正斜杠会报 "not found in this archive"，因此统一转换为 path.sep。
+    assert(asar.extractFile(archive, name.split('/').join(path.sep)).length > 0, `asar 缺少 ${name}`);
   }
   for (const name of ['mcp-server.js', 'ai-tools.js', 'mcp-bridge.js', 'frame-codec.js', 'package.json']) {
     assert(fs.existsSync(path.join(resources, 'mcp', name)), `MCP 缺少 ${name}`);
