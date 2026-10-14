@@ -41,11 +41,16 @@ class ReleaseApp:
                         artifact_prefix=build["nsis"]["artifactName"].split("-Setup-")[0],
                         title="", owner=publish.get("owner", "ALVAN-1"),
                         repo=publish.get("repo", "BaudLab.io"), remote="origin",
-                        node=shutil.which("node") or "node")
+                        node=shutil.which("node") or "node", token="")
+        self.remember = tk.BooleanVar(value=False)
         try:
             saved = read_json(self.settings)
             # Version/name/feed come from the workspace, not a stale settings file.
             defaults.update({key: saved[key] for key in ("remote", "node") if key in saved})
+            # 勾选“记住 token”后，token 以明文保存在 local-settings.json（已被 .gitignore 忽略）。
+            if saved.get("remember_token") and saved.get("token"):
+                defaults["token"] = saved["token"]
+                self.remember.set(True)
         except (OSError, ValueError):
             pass
         page = ttk.Frame(window, padding=16)
@@ -70,8 +75,12 @@ class ReleaseApp:
         self.field(remote, "repo", "GitHub 仓库", defaults["repo"], 0, 2)
         self.field(remote, "remote", "Git remote", defaults["remote"], 1, 0)
         self.field(remote, "node", "Node 可执行路径", defaults["node"], 1, 2)
-        self.field(remote, "token", "GitHub token", "", 2, 0, show="•")
-        ttk.Label(remote, text="仅保存在内存；需要目标仓库 Contents 读写权限。").grid(row=2, column=2, columnspan=2, sticky="w", padx=8)
+        self.field(remote, "token", "GitHub token", defaults["token"], 2, 0, show="•")
+        remember = ttk.Checkbutton(remote, text="记住 token", variable=self.remember)
+        remember.grid(row=2, column=2, sticky="w", padx=8)
+        self.controls.append(remember)
+        ttk.Label(remote, text="需要目标仓库 Contents 读写权限。勾选“记住 token”后以明文保存在本机 release-tools/local-settings.json"
+                               "（该文件已被 .gitignore 忽略，不会进仓库或安装包）。").grid(row=3, column=0, columnspan=4, sticky="w", pady=(8, 0))
         notes_frame = ttk.LabelFrame(page, text="版本说明（Markdown；必填，写入 Release 与更新提示）", padding=8)
         notes_frame.grid(row=3, column=0, sticky="ew")
         self.notes = scrolledtext.ScrolledText(notes_frame, height=7, wrap="word", font=("Microsoft YaHei UI", 10))
@@ -157,7 +166,11 @@ class ReleaseApp:
                 raise ValueError("请选择已生成的产物目录")
             if mode != "build" and not messagebox.askyesno("发布此版本", f"即将发布 {opts.tag} 到 {opts.owner}/{opts.repo}\n\n提交发布元数据 → push 当前分支 → 创建 tag → 上传并公开 Release。\n\n是否执行？"):
                 return
-            write_json(self.settings, {key: getattr(opts, key) for key in ("remote", "node")})
+            settings = {key: getattr(opts, key) for key in ("remote", "node")}
+            if self.remember.get() and token:
+                settings["remember_token"] = True
+                settings["token"] = token
+            write_json(self.settings, settings)
         except Exception as error:
             messagebox.showerror("检查输入", str(error))
             return

@@ -496,9 +496,11 @@ class Pipeline:
         local = self.run(["git", "rev-parse", "--verify", "refs/tags/" + opts.tag + "^{commit}"], check=False)
         local_commit = local.stdout.decode().strip() if local.returncode == 0 else None
         head = self.git("rev-parse", "HEAD").decode().strip()
-        if (remote_commit and remote_commit != head) or (local_commit and local_commit != head):
-            raise ReleaseError("同名 tag 已指向其他提交；请使用新版本，工具不会覆盖 tag")
-        if dirty and (remote_commit or local_commit or release):
+        # 远程 tag 已被删除（例如删掉发错的 Release 后重发同一版本）时，本地残留的旧 tag 会在下面重建；
+        # 只要远程 tag 仍存在且指向别处，就绝不覆盖，要求改用新版本号。
+        if remote_commit and remote_commit != head:
+            raise ReleaseError("远程同名 tag 已指向其他提交；请使用新版本，工具不会覆盖远程 tag")
+        if dirty and (remote_commit or release):
             raise ReleaseError("此版本 tag/Release 已存在且发布元数据有变化，请使用新版本")
         self.assert_source(fingerprint, start_head)
         if release and not release['draft']:
@@ -511,6 +513,9 @@ class Pipeline:
         self.assert_source(fingerprint, head)
         if not local_commit:
             self.git('tag', '-a', opts.tag, '-F', 'release-tools/RELEASE_NOTES.md')
+        elif remote_commit is None and local_commit != head:
+            self.log("远程 tag " + opts.tag + " 已不存在，本地残留 tag 重建到当前提交 " + head[:8])
+            self.git('tag', '-f', '-a', opts.tag, '-F', 'release-tools/RELEASE_NOTES.md')
         self.assert_source(fingerprint, head)
         self.progress(79, "推送分支与版本 tag")
         self.git("push", "--atomic", opts.remote, f"HEAD:refs/heads/{branch}", f"refs/tags/{opts.tag}", env=env)

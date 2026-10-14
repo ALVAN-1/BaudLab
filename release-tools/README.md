@@ -31,7 +31,8 @@ release-tools\start-release-tool.bat
 
 1. 点「环境自检」：确认依赖、服务器源文件/模板、发布说明、部署文档齐全。
 2. 填写版本号（`x.y.z`）、显示名称、安装包前缀、Release 标题（可空）、版本说明。
-3. 填 GitHub token（仅内存保存，需目标仓库 Contents 读写权限）。
+3. 填 GitHub token（需目标仓库 Contents 读写权限）。默认仅内存保存；勾选右侧「记住 token」后写入
+   `release-tools/local-settings.json`（明文，已被 `.gitignore` 忽略，不会进仓库或安装包）。
 4. 「仅打包」只本地构建；「打包并发布」额外推送分支、创建 tag、上传并公开 Release。
 
 > 发布前请先**人工提交所有源码改动**：工具只提交发布元数据
