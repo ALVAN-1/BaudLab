@@ -37,5 +37,8 @@ dist-release/
 /latest.yml
 /win-unpacked/
 
+# ── 打包发布工具目录（工具脚本 + output/ 产物，均不进 git）──
+/release-tools/
+
 # ── Agent 工作区记忆（勿提交）──
 .workbuddy/
