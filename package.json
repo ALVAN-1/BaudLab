@@ -11,7 +11,8 @@
     "build:vue": "vite build",
     "build": "vite build && electron-builder --win nsis",
     "build:dir": "vite build && electron-builder --win dir",
-    "rebuild": "electron-rebuild"
+    "rebuild": "electron-rebuild",
+    "test:updates": "node --test tests/update-controller.test.js"
   },
   "author": "Serial Protocol Manager",
   "license": "MIT",
@@ -31,7 +32,7 @@
   },
   "build": {
     "appId": "com.serial-protocol-manager",
-    "productName": "Serial Protocol Manager",
+    "productName": "BaudLab",
     "compression": "maximum",
     "electronLanguages": [
       "zh-CN"
@@ -42,6 +43,7 @@
     },
     "files": [
       "main.js",
+      "update-controller.js",
       "preload.js",
       "auth.js",
       "ai-assistant.js",
@@ -62,26 +64,26 @@
           ]
         }
       ],
-      "icon": "assets/app.ico"
+      "icon": "assets/app.ico",
+      "executableName": "Serial Protocol Manager"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "SerialProtocolManager-Setup-${version}.${ext}",
+      "artifactName": "BaudLab-Setup-${version}.${ext}",
       "include": "build/installer.nsh",
       "differentialPackage": false,
       "warningsAsErrors": false,
       "installerIcon": "assets/app.ico",
       "uninstallerIcon": "assets/app.ico",
-      "installerSidebar": "build/welcome.bmp",
-      "uninstallerSidebar": "build/welcome.bmp",
       "installerHeader": "build/header.bmp",
       "installerHeaderIcon": "assets/app.ico"
     },
     "publish": {
-      "provider": "generic",
-      "url": "https://gitee.com/ALVAN1819184/alvan-uart-tool-privacy/releases/download/latest/"
+      "provider": "github",
+      "owner": "ALVAN-1",
+      "repo": "BaudLab.io"
     }
   }
 }

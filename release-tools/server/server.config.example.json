@@ -1,0 +1,11 @@
+{
+  "port": 3010,
+  "token": "",
+  "dbPath": "server-data/serial_protocol.db",
+  "backup": {
+    "enabled": true,
+    "dir": "server-data/backups",
+    "intervalHours": 24,
+    "keep": 14
+  }
+}

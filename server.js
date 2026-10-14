@@ -8,8 +8,9 @@
  *     npm install better-sqlite3
  *   - 本开发机也可直接 node server.js / npx electron server.js
  *
- * 部署到服务器电脑：将 server.js / db-schema.js / 启动服务器.bat 三个文件
- * 拷贝到服务器同一目录，安装 Node.js 22.13+ 后双击「启动服务器.bat」即可运行
+ * 发布部署：从 GitHub Release 下载 BaudLab-Server-X.Y.Z.zip，完整解压到固定目录，
+ * 安装 Node.js 22.13+ 后运行 start-server.bat（Linux/macOS 用 start-server.sh）。
+ * 包内包含 db-schema.js 和 default-protocol-data.js；详细部署和升级见包内 README.md。
  * （如需开机自启，可自行用任务计划程序或 pm2 注册）
  *
  * 配置：server.config.json（首次启动自动生成）

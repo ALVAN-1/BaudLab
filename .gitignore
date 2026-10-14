@@ -37,8 +37,12 @@ dist-release/
 /latest.yml
 /win-unpacked/
 
-# ── 打包发布工具目录（工具脚本 + output/ 产物，均不进 git）──
-/release-tools/
+# ── 发布脚本进 git；构建产物、临时配置和本地设置不进 git ──
+/release-tools/output/
+/release-tools/.work/
+/release-tools/local-settings.json
+/dist-*/
+__pycache__/
 
 # ── Agent 工作区记忆（勿提交）──
 .workbuddy/

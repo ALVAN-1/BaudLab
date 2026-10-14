@@ -743,6 +743,7 @@ svg { display: block; }
 .dl-actions { display: flex; flex-direction: column; gap: var(--s-xs); margin-top: auto; }
 .dl-actions .btn { width: 100%; }
 .dl-note { font-size: 12px; color: var(--ink-tertiary); text-align: center; margin-top: var(--s-xs); }
+.dl-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-md); margin-bottom: var(--s-md); }
 
 .install-steps { display: flex; flex-direction: column; gap: var(--s-md); }
 .install-step { display: flex; gap: var(--s-md); }
@@ -901,7 +902,7 @@ svg { display: block; }
 @media (max-width: 1024px) {
   .grid-3 { grid-template-columns: repeat(2, 1fr); }
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
-  .download-grid, .feedback-grid { grid-template-columns: 1fr; }
+  .download-grid, .dl-cards, .feedback-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 768px) {
@@ -1634,7 +1635,7 @@ svg { display: block; }
       <p class="subhead">当前稳定版本 v1.0.0，Windows 平台开箱即用。</p>
     </div>
 
-    <div class="download-grid">
+    <div class="dl-cards">
       <div class="download-card reveal">
         <div class="dl-platform">
           <span class="os-icon"><svg><use href="#i-windows"/></svg></span>
@@ -1645,7 +1646,7 @@ svg { display: block; }
           <span class="badge" style="margin-left:auto"><span class="dot"></span>最新</span>
         </div>
         <div class="dl-file">
-          <div class="fname">SerialProtocolManager-Setup-1.0.0.exe</div>
+          <div class="fname">BaudLab-Setup-x.y.z.exe</div>
           <div class="fmeta">
             <span><svg><use href="#i-download"/></svg>65.4 MB</span>
             <span><svg><use href="#i-cpu"/></svg>NSIS 安装包 · x64</span>
@@ -1663,30 +1664,66 @@ svg { display: block; }
         <p class="dl-note">下载将跳转至 GitHub Releases 页面</p>
       </div>
 
-      <div class="card reveal" style="padding: var(--s-xl);">
-        <h3 class="card-title" style="margin-bottom: var(--s-lg);">安装说明</h3>
-        <div class="install-steps">
-          <div class="install-step">
-            <span class="n">1</span>
-            <div>
-              <h4>下载安装包</h4>
-              <p>点击左侧按钮获取 <span class="mono" style="color:var(--ink-muted)">SerialProtocolManager-Setup-1.0.0.exe</span>。</p>
-            </div>
+      <div class="download-card reveal">
+        <div class="dl-platform">
+          <span class="os-icon"><svg><use href="#i-database"/></svg></span>
+          <div>
+            <h3>团队服务器</h3>
+            <span class="caption">管理员部署 · 内网协作</span>
           </div>
-          <div class="install-step">
-            <span class="n">2</span>
-            <div>
-              <h4>运行安装向导</h4>
-              <p>双击安装包，按向导提示选择安装目录，完成安装。支持后期更改安装位置。</p>
-              <div class="req"><span>Windows 10 / 11 64 位</span><span>约 200 MB 可用空间</span><span>无需管理员依赖</span></div>
-            </div>
+          <span class="badge" style="margin-left:auto"><span class="dot"></span>同版本</span>
+        </div>
+        <div class="dl-file">
+          <div class="fname">BaudLab-Server-x.y.z.zip</div>
+          <div class="fmeta">
+            <span><svg><use href="#i-download"/></svg>轻量部署包</span>
+            <span><svg><use href="#i-cpu"/></svg>需 Node.js 22.13+</span>
+            <span><svg><use href="#i-loop"/></svg>随客户端同一 Release</span>
           </div>
-          <div class="install-step">
-            <span class="n">3</span>
-            <div>
-              <h4>启动与更新</h4>
-              <p>安装完成后即可启动。应用内置更新检查，新版本发布时会自动提醒，一键升级。</p>
-            </div>
+        </div>
+        <div class="dl-actions">
+          <a class="btn btn-primary btn-lg" href="https://github.com/ALVAN-1/BaudLab.io/releases/latest" target="_blank" rel="noopener">
+            <svg><use href="#i-download"/></svg>下载服务器包
+          </a>
+          <a class="btn btn-secondary" href="#docs">
+            <svg><use href="#i-file-text"/></svg>部署与升级说明
+          </a>
+        </div>
+        <p class="dl-note">仅管理员需要；成员安装客户端即可</p>
+      </div>
+    </div>
+
+    <div class="card reveal" style="padding: var(--s-xl);">
+      <h3 class="card-title" style="margin-bottom: var(--s-lg);">安装说明</h3>
+      <div class="install-steps">
+        <div class="install-step">
+          <span class="n">1</span>
+          <div>
+            <h4>下载安装包</h4>
+            <p>点击左侧按钮获取 <span class="mono" style="color:var(--ink-muted)">BaudLab-Setup-x.y.z.exe</span>。</p>
+          </div>
+        </div>
+        <div class="install-step">
+          <span class="n">2</span>
+          <div>
+            <h4>运行安装向导</h4>
+            <p>双击安装包，按向导提示选择安装目录，完成安装。支持后期更改安装位置。</p>
+            <div class="req"><span>Windows 10 / 11 64 位</span><span>约 200 MB 可用空间</span><span>无需管理员依赖</span></div>
+          </div>
+        </div>
+        <div class="install-step">
+          <span class="n">3</span>
+          <div>
+            <h4>启动与更新</h4>
+            <p>安装完成后即可启动。应用内置更新检查，新版本发布时会自动提醒，一键升级。</p>
+          </div>
+        </div>
+        <div class="install-step">
+          <span class="n">4</span>
+          <div>
+            <h4>团队协作（可选）</h4>
+            <p>由管理员下载团队服务器包并在内网部署，成员在客户端「数据库连接」页填入服务器地址与令牌即可接入团队协议库；成员无需自建服务器。</p>
+            <div class="req"><span>服务器需 Node.js 22.13+</span><span>客户端与服务器同版本发布</span></div>
           </div>
         </div>
       </div>

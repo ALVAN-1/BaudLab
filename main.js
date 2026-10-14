@@ -8,6 +8,7 @@ const { initAuth, getSessionUser } = require('./auth');
 const { registerAiIpc } = require('./ai-assistant');
 const { registerMcpBridge } = require('./mcp-bridge');
 const { autoUpdater } = require('electron-updater');
+const { createUpdateController } = require('./update-controller');
 
 /* 自动更新配置 */
 autoUpdater.autoDownload = false;
@@ -1627,126 +1628,54 @@ ipcMain.handle('feedback:submit-issue', async (_e, { title, description, type, p
   }
 });
 
-ipcMain.handle('update:check', async () => {
-  if (!app.isPackaged) return { success: false, devMode: true };
-  try {
-    /* 动态设置更新源：优先使用已配置的团队服务器地址 */
-    if (isRemoteActive()) {
-      const baseUrl = remoteDb.url.replace(/\/+$/, '');
-      autoUpdater.setFeedURL({ provider: 'generic', url: baseUrl + '/updates/' });
-      console.log('[Update] 更新源:', baseUrl + '/updates/');
-    } else {
-      return { success: false, error: '未配置团队服务器地址，无法检查更新' };
-    }
-    const result = await autoUpdater.checkForUpdates();
-    const latest = result?.updateInfo?.version;
-    const current = app.getVersion();
-    return {
-      success: true,
-      available: latest && latest !== current,
-      version: latest || current,
-      currentVersion: current,
-      releaseNotes: result?.updateInfo?.releaseNotes || '',
-    };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
+const updateController = createUpdateController({
+  app, updater: autoUpdater,
+  send: (channel, data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, data);
+  },
+  prepareInstall: () => { isQuitting = true; },
+  restoreInstall: () => { isQuitting = false; },
 });
+ipcMain.handle('update:check', () => updateController.check());
+ipcMain.handle('update:download', () => updateController.download());
+ipcMain.handle('update:install', () => updateController.install());
 
-ipcMain.handle('update:download', async () => {
-  if (!app.isPackaged) return { success: false, devMode: true };
-  try {
-    await autoUpdater.downloadUpdate();
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
-});
-
-ipcMain.handle('update:install', () => {
-  autoUpdater.quitAndInstall();
-});
-
-/* 下载进度事件 → 推送到渲染进程 */
-autoUpdater.on('download-progress', (progress) => {
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('update:progress', {
-      percent: progress.percent,
-      transferred: progress.transferred,
-      total: progress.total,
-    });
-  }
-});
-
-/* 下载完成事件 */
-autoUpdater.on('update-downloaded', () => {
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('update:downloaded');
-  }
-});
-
-/* ── 自动检查更新 ── */
+/* All modes use the GitHub source from app-update.yml. Team SSE only requests a recheck. */
 let updateCheckTimer = null;
-
+let updateInitialTimer = null;
+let lastNotifiedVersion = '';
 async function autoCheckForUpdate(silent = true) {
-  if (!app.isPackaged) return;
-  try {
-    if (!isRemoteActive()) return;
-    const baseUrl = remoteDb.url.replace(/\/+$/, '');
-    autoUpdater.setFeedURL({ provider: 'generic', url: baseUrl + '/updates/' });
-    const result = await autoUpdater.checkForUpdates();
-    const latest = result?.updateInfo?.version;
-    const current = app.getVersion();
-    if (latest && latest !== current) {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('update:available', {
-          version: latest,
-          currentVersion: current,
-          releaseNotes: result?.updateInfo?.releaseNotes || '',
-        });
-      }
-      /* 弹出系统通知（受用户偏好控制） */
-      if (updateNotifyEnabled) {
-        if (Notification.isSupported()) {
-          const n = new Notification({
-            title: `发现新版本 v${latest}`,
-            body: `当前版本 v${current}，点击查看并下载更新`,
-            icon: path.join(__dirname, 'assets', 'app.ico'),
-            silent: false,
-          });
-          n.on('click', () => {
-            showMainWindow();
-            if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('update:show-available', {
-                version: latest,
-                currentVersion: current,
-                releaseNotes: result?.updateInfo?.releaseNotes || '',
-              });
-            }
-          });
-          n.show();
-        } else {
-          showTrayBalloon(`发现新版本 v${latest}`, `当前版本 v${current}，点击查看更新`);
-        }
-      }
-    }
-  } catch (err) {
-    if (!silent) console.error('[Update] 自动检查失败:', err.message);
+  const result = await updateController.check();
+  if (!result.success) {
+    if (!silent && result.error) console.error('[Update]', result.error);
+    return;
+  }
+  if (!result.available || result.phase !== 'available' || lastNotifiedVersion === result.version) return;
+  lastNotifiedVersion = result.version;
+  if (!updateNotifyEnabled) return;
+  if (Notification.isSupported()) {
+    const notification = new Notification({
+      title: '发现新版本 v' + result.version,
+      body: '当前版本 v' + result.currentVersion + '，点击查看并下载更新',
+      icon: path.join(__dirname, 'assets', 'app.ico'),
+    });
+    notification.on('click', () => {
+      showMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('update:show-available', result);
+    });
+    notification.show();
+  } else {
+    showTrayBalloon('发现新版本 v' + result.version, '点击查看并下载更新');
   }
 }
-
 function startAutoUpdateCheck() {
-  /* 启动 10 秒后首次检查 */
-  setTimeout(() => autoCheckForUpdate(true), 10000);
-  /* 之后每 30 分钟检查一次 */
+  updateInitialTimer = setTimeout(() => autoCheckForUpdate(true), 10000);
   updateCheckTimer = setInterval(() => autoCheckForUpdate(true), 30 * 60 * 1000);
 }
-
 function stopAutoUpdateCheck() {
-  if (updateCheckTimer) {
-    clearInterval(updateCheckTimer);
-    updateCheckTimer = null;
-  }
+  clearTimeout(updateInitialTimer);
+  clearInterval(updateCheckTimer);
+  updateInitialTimer = updateCheckTimer = null;
 }
 
 /* ── SSE 版本实时推送 ── */
@@ -1844,41 +1773,7 @@ function handleSseEvent(raw) {
   if (eventType === 'update' && dataStr) {
     try {
       const data = JSON.parse(dataStr);
-      const current = app.getVersion();
-      if (data.version && data.version !== current) {
-        /* 推送的版本比当前新 → 弹系统通知 */
-        if (updateNotifyEnabled) {
-          if (Notification.isSupported()) {
-            const n = new Notification({
-              title: `发现新版本 v${data.version}`,
-              body: `当前版本 v${current}，点击查看并下载更新`,
-              icon: path.join(__dirname, 'assets', 'app.ico'),
-              silent: false,
-            });
-            n.on('click', () => {
-              showMainWindow();
-              if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send('update:show-available', {
-                  version: data.version,
-                  currentVersion: current,
-                  releaseNotes: data.releaseNotes || '',
-                });
-              }
-            });
-            n.show();
-          } else {
-            showTrayBalloon(`发现新版本 v${data.version}`, `当前版本 v${current}，点击查看更新`);
-          }
-        }
-        /* 同时通知渲染进程 */
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('update:available', {
-            version: data.version,
-            currentVersion: current,
-            releaseNotes: data.releaseNotes || '',
-          });
-        }
-      }
+      if (data.version) void autoCheckForUpdate(true);
     } catch { /* 解析失败忽略 */ }
   }
 }

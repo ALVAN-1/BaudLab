@@ -187,10 +187,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
     check: () => ipcRenderer.invoke('update:check'),
     download: () => ipcRenderer.invoke('update:download'),
     install: () => ipcRenderer.invoke('update:install'),
-    onProgress: (callback) => ipcRenderer.on('update:progress', (e, data) => callback(data)),
-    onDownloaded: (callback) => ipcRenderer.on('update:downloaded', () => callback()),
-    onAvailable: (callback) => ipcRenderer.on('update:available', (e, data) => callback(data)),
-    onShowAvailable: (callback) => ipcRenderer.on('update:show-available', (e, data) => callback(data)),
+    onError: (callback) => {
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('update:error', handler);
+      return () => ipcRenderer.removeListener('update:error', handler);
+    },
+    onProgress: (callback) => {
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('update:progress', handler);
+      return () => ipcRenderer.removeListener('update:progress', handler);
+    },
+    onDownloaded: (callback) => {
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('update:downloaded', handler);
+      return () => ipcRenderer.removeListener('update:downloaded', handler);
+    },
+    onAvailable: (callback) => {
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('update:available', handler);
+      return () => ipcRenderer.removeListener('update:available', handler);
+    },
+    onShowAvailable: (callback) => {
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('update:show-available', handler);
+      return () => ipcRenderer.removeListener('update:show-available', handler);
+    },
   },
 
   // --- 协议导出 ---

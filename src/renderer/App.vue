@@ -715,7 +715,7 @@
               </div>
             </div>
             <div class="modal-footer">
-              <button v-if="updateCheckResult.status === 'available'" class="btn btn-primary" @click="goDownloadUpdate">立即下载</button>
+              <button v-if="updateCheckResult.status === 'available'" class="btn btn-primary" :disabled="updateStatus === 'installing'" @click="goDownloadUpdate">{{ updateStatus === 'installing' ? '正在安装…' : updateStatus === 'downloaded' ? '立即重启' : updateStatus === 'downloading' ? '查看下载进度' : '立即下载' }}</button>
               <button v-else class="btn btn-primary" @click="showUpdateModal = false">确定</button>
             </div>
           </div>
@@ -939,7 +939,8 @@
               <span v-if="updateStatus === 'available'">发现新版本 v{{ updateInfo.version }}</span>
               <span v-else-if="updateStatus === 'downloading'">正在下载更新… {{ downloadPercent }}%</span>
               <span v-else-if="updateStatus === 'downloaded'">更新就绪</span>
-              <span v-else>检查更新失败</span>
+              <span v-else-if="updateStatus === 'installing'">正在安装更新…</span>
+              <span v-else>更新失败</span>
             </div>
             <div class="update-sub">
               <span v-if="updateStatus === 'available'">当前版本 v{{ updateInfo.currentVersion }}，点击下载更新</span>
@@ -952,6 +953,7 @@
           <!-- 操作按钮 -->
           <button v-if="updateStatus === 'available'" class="update-btn" @click="startDownloadUpdate">下载</button>
           <button v-else-if="updateStatus === 'downloaded'" class="update-btn" @click="installUpdate">立即重启</button>
+          <button v-else-if="updateStatus === 'error'" class="update-btn" @click="retryUpdate">重试</button>
 
           <!-- 关闭按钮 -->
           <button class="update-close" @click="updateVisible = false">×</button>
@@ -2407,11 +2409,7 @@ async function checkUpdate() {
       updateCheckResult.version = result.version;
       updateCheckResult.currentVersion = result.currentVersion;
       updateCheckResult.releaseNotes = result.releaseNotes || '';
-      // 同时同步到顶部徽章
-      updateInfo.version = result.version;
-      updateInfo.currentVersion = result.currentVersion;
-      updateInfo.releaseNotes = result.releaseNotes || '';
-      updateStatus.value = 'available';
+      applyUpdateState(result, false);
     } else {
       updateCheckResult.status = 'latest';
       updateCheckResult.currentVersion = result.currentVersion || appVersion.value;
@@ -2427,7 +2425,8 @@ async function checkUpdate() {
 function goDownloadUpdate() {
   showUpdateModal.value = false;
   updateVisible.value = true;
-  startDownloadUpdate();
+  if (updateStatus.value === 'downloaded') installUpdate();
+  else if (updateStatus.value !== 'downloading' && updateStatus.value !== 'installing') startDownloadUpdate();
 }
 
 // 切换用户（清除主进程会话文件，返回用户选择界面）
@@ -2613,73 +2612,71 @@ onMounted(() => {
 
 /* ===================== 自动更新 ===================== */
 const updateVisible = ref(false);
-const updateStatus = ref('idle'); // idle | available | downloading | downloaded | error
+const updateStatus = ref('idle');
 const updateInfo = reactive({ version: '', currentVersion: '', releaseNotes: '' });
 const updateError = ref('');
+const updateErrorStage = ref('check');
 const downloadPercent = ref(0);
+const updateUnsubscribers = [];
 
+function applyUpdateState(data, show = true) {
+  if (!data?.success || !data.available) return;
+  Object.assign(updateInfo, { version: data.version, currentVersion: data.currentVersion, releaseNotes: data.releaseNotes || '' });
+  const phase = data.phase || 'available';
+  // A delayed system notification must not reset a download already in progress.
+  if (phase !== 'available' || !['downloading', 'downloaded', 'installing'].includes(updateStatus.value)) updateStatus.value = phase;
+  if (show) updateVisible.value = true;
+}
+function showUpdateError(data, stage) {
+  updateErrorStage.value = data?.stage || stage;
+  updateError.value = data?.error || '更新失败，请重试';
+  updateStatus.value = 'error';
+  updateVisible.value = true;
+}
 async function checkForUpdate() {
   if (!hasElectron || !window.electronAPI.update) return;
-  try {
-    const result = await window.electronAPI.update.check();
-    if (result.devMode) return; /* 开发环境跳过 */
-    if (!result.success) {
-      if (!result.error) return; /* 静默失败 */
-      updateStatus.value = 'error';
-      updateError.value = result.error;
-      updateVisible.value = true;
-      return;
-    }
-    if (result.available) {
-      updateInfo.version = result.version;
-      updateInfo.currentVersion = result.currentVersion;
-      updateInfo.releaseNotes = result.releaseNotes;
-      updateStatus.value = 'available';
-      updateVisible.value = true;
-    }
-  } catch { /* 静默失败 */ }
+  try { applyUpdateState(await window.electronAPI.update.check()); }
+  catch { /* Background network failures remain quiet; manual checks report errors. */ }
 }
-
-/* 监听主进程自动检查发现新版本 */
 if (hasElectron && window.electronAPI.update) {
-  window.electronAPI.update.onAvailable((data) => {
-    updateInfo.version = data.version;
-    updateInfo.currentVersion = data.currentVersion;
-    updateInfo.releaseNotes = data.releaseNotes || '';
-    updateStatus.value = 'available';
-    updateVisible.value = true;
-  });
-  /* 点击系统通知打开应用时弹出更新卡片 */
-  window.electronAPI.update.onShowAvailable((data) => {
-    updateInfo.version = data.version;
-    updateInfo.currentVersion = data.currentVersion;
-    updateInfo.releaseNotes = data.releaseNotes || '';
-    updateStatus.value = 'available';
-    updateVisible.value = true;
-  });
+  const api = window.electronAPI.update;
+  updateUnsubscribers.push(
+    api.onAvailable(data => applyUpdateState(data)),
+    api.onShowAvailable(data => applyUpdateState(data)),
+    api.onProgress(data => {
+      if (updateStatus.value === 'downloading') downloadPercent.value = Math.min(100, Math.max(0, Math.round(data.percent || 0)));
+    }),
+    api.onDownloaded(data => { applyUpdateState(data); downloadPercent.value = 100; }),
+    api.onError(data => showUpdateError(data, 'download')),
+  );
 }
-
 async function startDownloadUpdate() {
+  if (!hasElectron || !window.electronAPI.update || ['downloading', 'installing'].includes(updateStatus.value)) return;
   updateStatus.value = 'downloading';
   downloadPercent.value = 0;
-  if (hasElectron && window.electronAPI.update) {
-    window.electronAPI.update.onProgress((data) => {
-      downloadPercent.value = Math.round(data.percent);
-    });
-    window.electronAPI.update.onDownloaded(() => {
-      updateStatus.value = 'downloaded';
-    });
-    await window.electronAPI.update.download();
-  }
+  updateVisible.value = true;
+  try {
+    const result = await window.electronAPI.update.download();
+    if (!result.success) showUpdateError(result, 'download');
+    else applyUpdateState(result);
+  } catch (error) { showUpdateError({ error: String(error.message || error) }, 'download'); }
 }
-
-function installUpdate() {
-  if (hasElectron && window.electronAPI.update) {
-    window.electronAPI.update.install();
-  }
+async function installUpdate() {
+  if (!hasElectron || !window.electronAPI.update || updateStatus.value !== 'downloaded') return;
+  updateStatus.value = 'installing';
+  try {
+    const result = await window.electronAPI.update.install();
+    if (!result.success) showUpdateError(result, 'install');
+  } catch (error) { showUpdateError({ error: String(error.message || error) }, 'install'); }
+}
+async function retryUpdate() {
+  if (updateErrorStage.value === 'install') { updateStatus.value = 'downloaded'; return installUpdate(); }
+  if (updateErrorStage.value === 'download') return startDownloadUpdate();
+  return checkUpdate();
 }
 
 onUnmounted(() => {
+  for (const unsubscribe of updateUnsubscribers) unsubscribe?.();
   document.removeEventListener('click', onGlobalClick);
   stopOfflinePolling();
 });

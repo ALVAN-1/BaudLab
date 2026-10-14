@@ -111,7 +111,7 @@
 
 ### 8. 应用级能力
 
-系统托盘（最小化到后台）、单实例、开机自启、自动更新（electron-updater + Gitee Releases，检查 / 下载 / 安装 / 进度提示）、系统通知、系统日志、深浅色主题、GitHub Issue 反馈（应用内直提，失败回退网页）、MCP 接入指南。
+系统托盘（最小化到后台）、单实例、开机自启、自动更新（electron-updater + GitHub Releases，检查 / 下载 / 安装 / 进度提示）、系统通知、系统日志、深浅色主题、GitHub Issue 反馈（应用内直提，失败回退网页）、MCP 接入指南。
 
 ## 快速开始：团队服务器 + 管理后台
 
@@ -149,6 +149,13 @@
 当前稳定版本 **v1.0.0**（2026-10-13）· Windows 10/11 x64 · 65.4 MB · 免费 · MIT License
 
 前往官网下载页获取安装包：<https://alvan-1.github.io/BaudLab.io/#download>
+
+每个版本的 GitHub Release 同时包含两个资产，版本号一致：
+
+- **客户端**：`BaudLab-Setup-x.y.z.exe`（所有成员安装）
+- **团队服务器**：`BaudLab-Server-x.y.z.zip`（仅管理员部署，需 Node.js 22.13+）
+
+下载与部署细节见 <https://github.com/ALVAN-1/BaudLab.io/releases/latest> 与 [docs/RELEASE_AND_DEPLOYMENT.md](docs/RELEASE_AND_DEPLOYMENT.md)。
 
 ## 反馈
 
