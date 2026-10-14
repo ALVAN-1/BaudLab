@@ -369,11 +369,11 @@ function initSchema(db) {
     console.warn('[Schema] projects.color 列添加失败:', e.message);
   }
 
-  /* 插入默认协议 PUMP协议 V0.0.1（幂等：已存在则跳过） */
+  /* 插入默认协议：步进电机控制驱动协议 v1.0.0（幂等：已存在则跳过） */
   try {
     const inserted = insertDefaultProtocol(db);
     if (inserted) {
-      console.log('[Schema] 默认协议 PUMP协议 V0.0.1 已插入');
+      console.log('[Schema] 默认协议 步进电机控制驱动协议 v1.0.0 已插入');
     }
   } catch (e) {
     console.warn('[Schema] 默认协议插入失败:', e.message);

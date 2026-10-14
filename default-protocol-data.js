@@ -1,11 +1,11 @@
 /**
- * 默认协议数据：PUMP协议 V0.0.1
- * 智能炒菜机板间UART全双工通信协议
+ * 默认协议数据：步进电机控制驱动协议 v1.0.0
+ * 基于 UART 的步进电机控制驱动通信协议示例
  * 客户端与服务器初始化时自动插入（幂等）
  */
 
-const PROTO_NAME = 'PUMP协议';
-const PROTO_VERSION = 'v0.0.1';
+const PROTO_NAME = '步进电机控制驱动协议';
+const PROTO_VERSION = 'v1.0.0';
 
 const fieldOrder = ['sof', 'src', 'dst', 'ver', 'cmd', 'ctr', 'seq', 'tid', 'len', 'data', 'chk', 'eof'];
 
@@ -25,7 +25,8 @@ const fieldConfig = {
 };
 
 const configJson = JSON.stringify({
-  protoDesc: '智能炒菜机板间UART全双工通信协议。含通用帧（紧急停机/心跳/应答）、控制指令、故障上报、状态上报、查询指令、配置标定等。',
+  protoDesc: '步进电机控制驱动协议示例。基于 UART 的通用帧（帧头 / 源地址 / 目标地址 / 命令字 / 长度 / 数据 / CRC16 / 帧尾），' +
+    '覆盖电机使能与失能、运动参数设置、绝对与相对位置运动、运动停止以及驱动器状态上报，适用于单轴或多轴步进电机驱动器控制。',
   fieldOrder,
   fieldConfig: Object.fromEntries(
     fieldOrder.map(k => [k, { ...fieldConfig[k], byteCount: fieldConfig[k].byteCount === 'custom' ? fieldConfig[k].customCount : fieldConfig[k].byteCount }])
@@ -38,12 +39,15 @@ const configJson = JSON.stringify({
 
 const modules = [
   { name: '广播地址', address: '00' },
-  { name: '主控板', address: '01' },
-  { name: '液料泵送板', address: '02' },
-  { name: 'IH控制板', address: '03' },
-  { name: '旋钮屏模块', address: '04' },
-  { name: '投菜板', address: '05' },
+  { name: '上位机', address: '01' },
+  { name: 'X轴驱动器', address: '02' },
+  { name: 'Y轴驱动器', address: '03' },
+  { name: 'Z轴驱动器', address: '04' },
+  { name: '旋转轴驱动器', address: '05' },
 ];
+
+/* 主站（上位机）发送的指令方向为 tx，其余（驱动器上报）为 rx */
+const MASTER_SENDER = '上位机';
 
 function hexVal(v) {
   if (!v) return '00';
@@ -79,162 +83,76 @@ function convertFields(byteConfigs) {
 }
 
 function getDirection(sender) {
-  if (sender && (sender.includes('液料泵送板') || sender.includes('投菜板'))) return 'rx';
-  return 'tx';
+  return sender === MASTER_SENDER ? 'tx' : 'rx';
 }
 
 const funcDefs = [
-  { func: '0x0100', name: '紧急停机', sender: '主控板', receiver: '液料泵送板', dataLen: 0, byteConfigs: [], desc: '所有模块立即停止所有动作', cycle: 0 },
-  { func: '0x0105', name: '心跳帧', sender: '主控板', receiver: '液料泵送板', dataLen: 0, byteConfigs: [], desc: '每1s发送，3s无心跳判定离线', cycle: 1000 },
-  { func: '0xE001', name: '模块应答', sender: '液料泵送板', receiver: '主控板', dataLen: 8, byteConfigs: [
-    { name: '应答状态', parseMode: 'enum', enumValues: [{ value: '0x00', label: 'NACK' }, { value: '0x01', label: 'ACK' }] },
-    { name: '模块地址', parseMode: 'raw' },
-    { name: '接收到的命令字H', parseMode: 'raw' },
-    { name: '接收到的命令字L', parseMode: 'raw' },
-    { name: '模块当前状态', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '初始化中' }, { value: '0x01', label: '空闲中' },
-      { value: '0x02', label: '执行中' }, { value: '0x03', label: '执行完成' },
-    ]},
-    { name: '错误码', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '无错误' }, { value: '0x01', label: '不支持的CMD' },
-      { value: '0x02', label: '参数错误' }, { value: '0x03', label: '设备忙' },
-      { value: '0x04', label: '设备故障' }, { value: '0x05', label: '执行失败' },
-    ]},
-    { name: '故障命令字H', parseMode: 'raw' },
-    { name: '故障命令字L', parseMode: 'raw' },
-  ], desc: '模块应答，ACK与NACK，无故障时故障命令字为0x0000', cycle: 0 },
-  { func: '0x0200', name: '泵料', sender: '主控板', receiver: '液料泵送板', dataLen: 5, byteConfigs: [
-    { name: '调料编号', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '油' }, { value: '0x01', label: '醋' }, { value: '0x02', label: '盐水' },
-      { value: '0x03', label: '水' }, { value: '0x04', label: '苏打/糖水' }, { value: '0x05', label: '料酒' },
-      { value: '0x06', label: '生抽' }, { value: '0x07', label: '老抽' },
-    ]},
-    { name: '泵料重量_H', parseMode: 'raw' },
-    { name: '泵料重量_M', parseMode: 'raw' },
-    { name: '泵料重量_L', parseMode: 'raw' },
-    { name: '泵料超时时间（秒）', parseMode: 'raw' },
-  ], desc: '指定调料泵送，泵料重量（如1000.01g扩大100倍10001），泵料超过超时时间视为失败', cycle: 0 },
-  { func: '0x0201', name: '停止泵料', sender: '主控板', receiver: '液料泵送板', dataLen: 1, byteConfigs: [
-    { name: '调料编号', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '油' }, { value: '0x01', label: '醋' }, { value: '0x02', label: '盐水' },
-      { value: '0x03', label: '水' }, { value: '0x04', label: '苏打/糖水' }, { value: '0x05', label: '料酒' },
-      { value: '0x06', label: '生抽' }, { value: '0x07', label: '老抽' }, { value: '0x0A', label: '全部停止泵送' },
-    ]},
-  ], desc: '指定调料停止泵送，0x0A表示全部停止', cycle: 0 },
-  { func: '0x0300', name: '投菜', sender: '主控板', receiver: '投菜板', dataLen: 3, byteConfigs: [
-    { name: '菜盒编号', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '1号菜盒' }, { value: '0x01', label: '2号菜盒' }, { value: '0x02', label: '3号菜盒' },
-    ]},
-    { name: '抖动次数', parseMode: 'raw' },
-    { name: '振动时间（秒）', parseMode: 'raw' },
-  ], desc: '菜盒编号（1~3），抖动次数（1~10），振动时间（1~10）', cycle: 0 },
-  { func: '0x0301', name: '取消投菜', sender: '主控板', receiver: '投菜板', dataLen: 1, byteConfigs: [
-    { name: '菜盒编号', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '1号菜盒' }, { value: '0x01', label: '2号菜盒' },
-      { value: '0x02', label: '3号菜盒' }, { value: '0x0A', label: '取消全部尚未投放菜盒' },
-    ]},
-  ], desc: '菜盒编号为0x0A表示取消全部尚未投放菜盒', cycle: 0 },
-  { func: '0x0E00', name: '查询液位', sender: '主控板', receiver: '液料泵送板', dataLen: 1, byteConfigs: [
-    { name: '调料编号', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '油' }, { value: '0x01', label: '醋' }, { value: '0x02', label: '盐水' },
-      { value: '0x03', label: '水' }, { value: '0x04', label: '苏打/糖水' }, { value: '0x05', label: '料酒' },
-      { value: '0x06', label: '生抽' }, { value: '0x07', label: '老抽' }, { value: '0x0A', label: '全部' },
-    ]},
-  ], desc: '查询调料的液位状态，0x0A代表全部调料液位', cycle: 0 },
-  { func: '0x0E01', name: '查询调料总重', sender: '主控板', receiver: '液料泵送板', dataLen: 0, byteConfigs: [], desc: '查询调料总重', cycle: 0 },
-  { func: '0x0E02', name: '查询调料泵状态', sender: '主控板', receiver: '液料泵送板', dataLen: 0, byteConfigs: [], desc: '查询当前调料泵状态，运行中/停止', cycle: 0 },
-  { func: '0x0F00', name: '查询投菜摇臂状态', sender: '主控板', receiver: '投菜板', dataLen: 0, byteConfigs: [], desc: '查询投菜摇臂状态', cycle: 0 },
-  { func: '0x0F01', name: '查询菜盒是否放置', sender: '主控板', receiver: '投菜板', dataLen: 1, byteConfigs: [
-    { name: '菜盒编号', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '1号菜盒' }, { value: '0x01', label: '2号菜盒' }, { value: '0x03', label: '3号菜盒' },
-    ]},
-  ], desc: '查询具体菜盒是否放置到位', cycle: 0 },
-  { func: '0x0F02', name: '查询冰箱门状态', sender: '主控板', receiver: '投菜板', dataLen: 0, byteConfigs: [], desc: '查询冰箱门状态', cycle: 0 },
-  { func: '0x0600', name: '调料最低液位故障', sender: '液料泵送板', receiver: '主控板', dataLen: 1, byteConfigs: [
-    { name: '所有调料最低液位状态', parseMode: 'bits', bitMode: true, bits: ['油', '醋', '盐水', '水', '苏打/糖水', '料酒', '生抽', '老抽'] },
-  ], desc: '为1表示该调料液位低于最低液位故障', cycle: 0 },
-  { func: '0x0602', name: '调料板称重故障', sender: '液料泵送板', receiver: '主控板', dataLen: 0, byteConfigs: [], desc: '泵送板称重故障', cycle: 0 },
-  { func: '0x0601', name: '调料泵故障上报', sender: '液料泵送板', receiver: '主控板', dataLen: 2, byteConfigs: [
-    { name: '调料编号', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '油' }, { value: '0x01', label: '醋' }, { value: '0x02', label: '盐水' },
-      { value: '0x03', label: '水' }, { value: '0x04', label: '苏打/糖水' }, { value: '0x05', label: '料酒' },
-      { value: '0x06', label: '生抽' }, { value: '0x07', label: '老抽' },
-    ]},
-    { name: '故障状态', parseMode: 'raw' },
-  ], desc: '上报某一路调料泵故障', cycle: 0 },
-  { func: '0x0700', name: '投菜失败故障', sender: '投菜板', receiver: '主控板', dataLen: 1, byteConfigs: [
-    { name: '故障类型', parseMode: 'enum', enumValues: [
-      { value: '0x01', label: '步进电机故障' }, { value: '0x02', label: '振动电机故障' },
-      { value: '0x03', label: '冰箱开关故障' }, { value: '0x04', label: '投菜超时' },
-    ]},
-  ], desc: '投菜失败故障上报', cycle: 0 },
-  { func: '0x0A00', name: '调料泵料泵送结果状态上报', sender: '液料泵送板', receiver: '主控板', dataLen: 4, byteConfigs: [
-    { name: '调料编号', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '油泵送完成' }, { value: '0x01', label: '醋泵送完成' },
-      { value: '0x02', label: '盐水泵送完成' }, { value: '0x03', label: '水泵送完成' },
-      { value: '0x04', label: '苏打/糖水泵送完成' }, { value: '0x05', label: '料酒泵送完成' },
-      { value: '0x06', label: '生抽泵送完成' }, { value: '0x07', label: '老抽泵送完成' },
-      { value: '0x10', label: '油泵送失败' }, { value: '0x11', label: '醋泵送失败' },
-      { value: '0x12', label: '盐水泵送失败' }, { value: '0x13', label: '水泵送失败' },
-      { value: '0x14', label: '苏打/糖水泵送失败' }, { value: '0x15', label: '料酒泵送失败' },
-      { value: '0x16', label: '生抽泵送失败' }, { value: '0x17', label: '老抽泵送失败' },
-    ]},
-    { name: '已泵送重量高', parseMode: 'raw' },
-    { name: '已泵送重量中', parseMode: 'raw' },
-    { name: '已泵送重量低', parseMode: 'raw' },
-  ], desc: '泵料状态上报，执行完成泵料请求指令后主动上报', cycle: 0 },
-  { func: '0x0A01', name: '调料总重', sender: '液料泵送板', receiver: '主控板', dataLen: 3, byteConfigs: [
-    { name: '调料总重H', parseMode: 'raw' },
-    { name: '调料总重M', parseMode: 'raw' },
-    { name: '调料总重L', parseMode: 'raw' },
-  ], desc: '调料盒总重数值上报', cycle: 0 },
-  { func: '0x0A02', name: '调理泵运行状态', sender: '液料泵送板', receiver: '主控板', dataLen: 2, byteConfigs: [
-    { name: '几号泵', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '油' }, { value: '0x01', label: '醋' }, { value: '0x02', label: '盐水' },
-      { value: '0x03', label: '水' }, { value: '0x04', label: '苏打/糖水' }, { value: '0x05', label: '料酒' },
-      { value: '0x06', label: '生抽' }, { value: '0x07', label: '老抽' }, { value: '0x08', label: '全部' },
-    ]},
-    { name: '运行状态', parseMode: 'bits', bitMode: true, bits: ['油泵状态', '醋泵状态', '盐水泵状态', '水泵状态', '苏打/糖水泵状态', '料酒泵状态', '生抽泵状态', '老抽泵状态'] },
-  ], desc: '1为运行状态、0为停止状态', cycle: 0 },
-  { func: '0x0B00', name: '冰箱门状态', sender: '投菜板', receiver: '主控板', dataLen: 1, byteConfigs: [
-    { name: '门开关状态', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '关' }, { value: '0x01', label: '开' },
-    ]},
-  ], desc: '冰箱门开关状态上报', cycle: 0 },
-  { func: '0x0B01', name: '投菜摇臂位置状态上报', sender: '投菜板', receiver: '主控板', dataLen: 1, byteConfigs: [
-    { name: '投菜摇臂位置', parseMode: 'enum', enumValues: [
-      { value: '0x00', label: '收回位置' }, { value: '0x01', label: '投出位置' },
-    ]},
-  ], desc: '上报投菜摇臂位置', cycle: 0 },
-  { func: '0x0B02', name: '投菜结果上报', sender: '投菜板', receiver: '主控板', dataLen: 1, byteConfigs: [
-    { name: '投菜结果', parseMode: 'enum', enumValues: [
-      { value: '0x01', label: '1#菜盒投菜成功' }, { value: '0x02', label: '2#菜盒投菜成功' },
-      { value: '0x03', label: '3#菜盒投菜成功' }, { value: '0x04', label: '4#菜盒投菜成功' },
-      { value: '0x11', label: '1#菜盒投菜失败' }, { value: '0x12', label: '2#菜盒投菜失败' },
-      { value: '0x13', label: '3#菜盒投菜失败' }, { value: '0x14', label: '4#菜盒投菜失败' },
-    ]},
-  ], desc: '投菜结果上报', cycle: 0 },
-  { func: '0x1200', name: '调料泵送液位标定', sender: '主控板', receiver: '液料泵送板', dataLen: 1, byteConfigs: [
-    { name: '高低液位', parseMode: 'enum', enumValues: [
-      { value: '0x01', label: '低液位' }, { value: '0x02', label: '高液位' },
-    ]},
-  ], desc: '标定所有调料高低液位', cycle: 0 },
-  { func: '0x1201', name: '配置波特率', sender: '主控板', receiver: '液料泵送板', dataLen: 2, byteConfigs: [
-    { name: '波特率H', parseMode: 'raw' },
-    { name: '波特率L', parseMode: 'raw' },
-  ], desc: '调试阶段通过串口配置泵送板的波特率', cycle: 0 },
-  { func: '0x1202', name: '调料称重系数校准', sender: '主控板', receiver: '液料泵送板', dataLen: 2, byteConfigs: [
-    { name: '系数H', parseMode: 'raw' },
-    { name: '系数L', parseMode: 'raw' },
-  ], desc: '用于校准调料称重传感器系数', cycle: 0 },
-  { func: '0x1203', name: '泵送板生产测试', sender: '主控板', receiver: '液料泵送板', dataLen: 0, byteConfigs: [], desc: '泵送板生产部件测试程序', cycle: 0 },
-  { func: '0x1301', name: '投菜板生产测试', sender: '主控板', receiver: '投菜板', dataLen: 0, byteConfigs: [], desc: '投菜板生产测试', cycle: 0 },
+  {
+    func: '0x0100', name: '电机使能', sender: '上位机', receiver: 'X轴驱动器', dataLen: 1, byteConfigs: [
+      { name: '使能状态', parseMode: 'enum', enumValues: [
+        { value: '0x00', label: '失能' }, { value: '0x01', label: '使能' },
+      ]},
+    ], desc: '控制驱动器功率级使能，0x00 失能、0x01 使能；使能后电机绕组保持抱死。', cycle: 0,
+  },
+  {
+    func: '0x0200', name: '设定运动参数', sender: '上位机', receiver: 'X轴驱动器', dataLen: 6, byteConfigs: [
+      { name: '运行速度H', parseMode: 'raw' },
+      { name: '运行速度M', parseMode: 'raw' },
+      { name: '运行速度L', parseMode: 'raw' },
+      { name: '加速度H', parseMode: 'raw' },
+      { name: '加速度L', parseMode: 'raw' },
+      { name: '细分档位', parseMode: 'enum', enumValues: [
+        { value: '0x00', label: '1 细分' }, { value: '0x01', label: '2 细分' },
+        { value: '0x02', label: '4 细分' }, { value: '0x03', label: '8 细分' },
+        { value: '0x04', label: '16 细分' }, { value: '0x05', label: '32 细分' },
+      ]},
+    ], desc: '设置运行速度（脉冲/秒，大端三字节）、加速度（大端两字节）与细分档位。', cycle: 0,
+  },
+  {
+    func: '0x0300', name: '位置运动', sender: '上位机', receiver: 'X轴驱动器', dataLen: 4, byteConfigs: [
+      { name: '运动模式', parseMode: 'enum', enumValues: [
+        { value: '0x00', label: '绝对位置' }, { value: '0x01', label: '相对位置' },
+      ]},
+      { name: '目标位置H', parseMode: 'raw' },
+      { name: '目标位置M', parseMode: 'raw' },
+      { name: '目标位置L', parseMode: 'raw' },
+    ], desc: '按绝对或相对位置运动，目标位置为 24 位有符号脉冲数（大端）。', cycle: 0,
+  },
+  {
+    func: '0x0400', name: '停止运动', sender: '上位机', receiver: 'X轴驱动器', dataLen: 1, byteConfigs: [
+      { name: '停止方式', parseMode: 'enum', enumValues: [
+        { value: '0x00', label: '减速停止' }, { value: '0x01', label: '紧急停止' },
+      ]},
+    ], desc: '停止当前运动，减速停止按设定减速度平稳停车，紧急停止立即切断使能。', cycle: 0,
+  },
+  {
+    func: '0x0500', name: '驱动器状态上报', sender: 'X轴驱动器', receiver: '上位机', dataLen: 8, byteConfigs: [
+      { name: '运行状态', parseMode: 'enum', enumValues: [
+        { value: '0x00', label: '空闲' }, { value: '0x01', label: '加速中' },
+        { value: '0x02', label: '匀速运行' }, { value: '0x03', label: '减速中' },
+        { value: '0x04', label: '已停止' },
+      ]},
+      { name: '当前位置H', parseMode: 'raw' },
+      { name: '当前位置M', parseMode: 'raw' },
+      { name: '当前位置L', parseMode: 'raw' },
+      { name: '错误码', parseMode: 'enum', enumValues: [
+        { value: '0x00', label: '无错误' }, { value: '0x01', label: '过流' },
+        { value: '0x02', label: '过压' }, { value: '0x03', label: '欠压' },
+        { value: '0x04', label: '堵转' }, { value: '0x05', label: '过温' },
+      ]},
+      { name: '使能状态', parseMode: 'enum', enumValues: [
+        { value: '0x00', label: '失能' }, { value: '0x01', label: '使能' },
+      ]},
+      { name: '母线电压H', parseMode: 'raw' },
+      { name: '母线电压L', parseMode: 'raw' },
+    ], desc: '驱动器主动上报运行状态、当前位置、错误码、使能状态与母线电压。', cycle: 0,
+  },
 ];
 
 const snapshotJson = JSON.stringify({
   protoName: PROTO_NAME,
-  protoDesc: '智能炒菜机板间UART全双工通信协议',
-  versionMajor: 0, versionMinor: 0, versionPatch: 1,
+  protoDesc: '基于 UART 的步进电机控制驱动通信协议示例',
+  versionMajor: 1, versionMinor: 0, versionPatch: 0,
   fieldOrder, fieldConfig, endianness: '大端 (Big-Endian)',
   checkType: 'CRC16-MODBUS', checkStartField: 'SOF', checkEndField: 'DATA',
   moduleAddresses: modules.map(m => ({ name: m.name, addressBytes: [m.address] })),
@@ -282,8 +200,11 @@ function insertDefaultProtocol(db) {
   }
 
   try {
-    db.prepare('INSERT INTO protocol_versions (protocol_name, version, config_json, created_by) VALUES (?, ?, ?, ?)')
-      .run(PROTO_NAME, PROTO_VERSION, snapshotJson, 'system');
+    const pv = db.prepare(
+      'INSERT INTO protocol_versions (protocol_id, protocol_name, version, config_json, status, created_by) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(protoId, PROTO_NAME, PROTO_VERSION, snapshotJson, 'published', 'system');
+    /* 初始版本即当前版本，避免 current_version_id 为 NULL 导致版本历史面板为空 */
+    db.prepare('UPDATE protocols SET current_version_id = ? WHERE id = ?').run(pv.lastInsertRowid, protoId);
   } catch { /* ignore */ }
 
   return true;
