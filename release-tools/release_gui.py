@@ -16,6 +16,14 @@ from release_core import Options, Pipeline, read_json, write_json
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# release_core.py 中 progress 上报的进度阶梯；用于在两次上报之间做“假装推进”。
+# 若 release_core.py 的阶段划分调整，这里同步即可（只影响过渡观感）。
+STAGE_LADDER = (1, 8, 25, 65, 68, 72, 74, 79, 82, 97, 100)
+TICK = 0.05             # 界面轮询间隔（秒），与 window.after(50, ...) 保持一致
+CREEP_STALL = 0.8       # 超过这么久没有新上报才开始“假装推进”
+CREEP_TAU = 30.0        # “假装推进”时间常数（秒），越大越慢
+CREEP_MIN_STEP = 0.02   # 每个 tick 的最小推进量，保证肉眼可见
+
 
 class ReleaseApp:
     def __init__(self, window, root=ROOT):
@@ -113,11 +121,10 @@ class ReleaseApp:
         self.progress = ttk.Progressbar(bottom, maximum=100)
         self.progress.grid(row=2, column=0, columnspan=3, sticky="ew")
         # 进度条动画状态：目标值来自流水线阶段上报，显示值平滑逼近；
-        # 长时间没有新上报时切换为活动动画，避免看起来像卡死。
+        # 两次上报之间若长时间没有更新，则缓慢“假装推进”到下一个阶段。
         self.progress_target = 0.0
         self.progress_value = 0.0
         self.progress_stall_at = time.monotonic()
-        self.progress_indeterminate = False
         actions = ttk.Frame(bottom)
         actions.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(10, 0))
         self.button(actions, "仅打包", lambda: self.start("build")).pack(side="left")
@@ -126,7 +133,7 @@ class ReleaseApp:
         self.button(actions, "环境自检", self.selfcheck).pack(side="left", padx=8)
         self.button(actions, "打开产物目录", self.open_bundle).pack(side="right")
         self.button(actions, "查看 Release", self.open_release).pack(side="right", padx=8)
-        ttk.Label(page, text="发布会提交版本元数据、推送当前分支、创建 tag，并公开全部资产（客户端安装包 + latest.yml + 服务器部署包）。其他源码改动请先人工提交。进度条按阶段推进：阶段跳变时平滑过渡，长时间无上报时显示活动动画；上传阶段为实际字节进度。", wraplength=990).grid(row=6, column=0, sticky="w", pady=(10, 0))
+        ttk.Label(page, text="发布会提交版本元数据、推送当前分支、创建 tag，并公开全部资产（客户端安装包 + latest.yml + 服务器部署包）。其他源码改动请先人工提交。进度条按阶段推进：阶段跳变时平滑过渡，两次上报之间缓慢自动推进，上传阶段为实际字节进度。", wraplength=990).grid(row=6, column=0, sticky="w", pady=(10, 0))
         window.after(50, self.poll)
 
     def field(self, parent, key, label, value, row, col, **kwargs):
@@ -192,7 +199,6 @@ class ReleaseApp:
         self.progress_target = 0.0
         self.progress_value = 0.0
         self.progress_stall_at = time.monotonic()
-        self.set_indeterminate(False)
         self.progress["value"] = 0
         for widget in self.controls:
             widget.configure(state="disabled")
@@ -242,29 +248,28 @@ class ReleaseApp:
         self.log.see("end")
         self.log.configure(state="disabled")
 
-    def set_indeterminate(self, enabled):
-        """切换进度条的“活动动画”状态（长时间没有阶段上报时使用）。"""
-        if enabled == self.progress_indeterminate:
-            return
-        self.progress_indeterminate = enabled
-        if enabled:
-            self.progress.configure(mode="indeterminate")
-            self.progress.start(22)
-        else:
-            self.progress.stop()
-            self.progress.configure(mode="determinate")
-            self.progress["value"] = self.progress_value
+    def creep_ceiling(self):
+        """下一个阶段上报值，作为“假装推进”的上限（略微留白，避免提前触顶）。"""
+        for value in STAGE_LADDER:
+            if value > self.progress_target:
+                return value - 0.5
+        return 100.0
 
     def animate_progress(self):
-        """让显示值平滑逼近阶段目标值；阶段长时间无上报则切换为活动动画，避免进度条看起来卡死。"""
+        """阶段跳变时平滑过渡；两次上报之间若长时间无新数据，则缓慢“假装推进”到下一阶段。"""
         if self.progress_value < self.progress_target:
             step = max(0.15, (self.progress_target - self.progress_value) * 0.1)
             self.progress_value = min(self.progress_target, self.progress_value + step)
-            if not self.progress_indeterminate:
-                self.progress["value"] = self.progress_value
-        if self.busy and self.progress_target < 100 and not self.progress_indeterminate:
-            if time.monotonic() - self.progress_stall_at > 1.2:
-                self.set_indeterminate(True)
+            self.progress["value"] = self.progress_value
+            return
+        if not self.busy or time.monotonic() - self.progress_stall_at < CREEP_STALL:
+            return
+        ceiling = self.creep_ceiling()
+        if self.progress_value >= ceiling:
+            return
+        step = max(CREEP_MIN_STEP, (ceiling - self.progress_value) * (TICK / CREEP_TAU))
+        self.progress_value = min(ceiling, self.progress_value + step)
+        self.progress["value"] = self.progress_value
 
     def poll(self):
         try:
@@ -276,7 +281,6 @@ class ReleaseApp:
                     value, text = data
                     self.progress_target = float(value)
                     self.progress_stall_at = time.monotonic()
-                    self.set_indeterminate(False)
                     self.status.set(text)
                 elif event == "status":
                     self.status.set(data)
@@ -284,14 +288,12 @@ class ReleaseApp:
                     self.bundle.set(data)
                 elif event in ("done", "error"):
                     self.busy = False
-                    self.set_indeterminate(False)
                     for widget in self.controls:
                         widget.configure(state="normal")
                     if event == "done":
                         bundle, self.release_url = data
                         self.bundle.set(bundle)
-                        self.progress_target = self.progress_value = 100.0
-                        self.progress["value"] = 100
+                        self.progress_target = 100.0  # 由动画平滑补到 100
                         self.status.set("发布成功，客户端可检查更新。" if self.release_url else "打包成功；尚未推送或发布。")
                         self.append_log(self.release_url or bundle)
                     else:
