@@ -9,6 +9,8 @@ const { registerAiIpc } = require('./ai-assistant');
 const { registerMcpBridge } = require('./mcp-bridge');
 const { autoUpdater } = require('electron-updater');
 const { createUpdateController } = require('./update-controller');
+const { createTeamServer } = require('./server-embed');
+const { createDiscovery } = require('./mdns');
 
 /* 自动更新配置 */
 autoUpdater.autoDownload = false;
@@ -535,6 +537,10 @@ app.on('before-quit', () => {
   if (portPollTimer) clearInterval(portPollTimer);
   stopAutoUpdateCheck();
   stopSsePush();
+
+  // 停止内嵌团队服务器 + 撤销 mDNS 广播（同步发出 kill，stdin 管道关闭兜底）
+  try { teamServer.stop(); } catch (_) {}
+  try { discovery.destroy(); } catch (_) {}
 
   // 关闭 MCP 桥（清理 mcp-bridge.json 并释放端口）
   if (mcpBridgeHandle) {
@@ -1247,6 +1253,96 @@ ipcMain.handle('db-config:test', async (event, cfg) => {
 });
 
 // ---------------------------------------------------------------------------
+// 内嵌团队服务器 + 局域网零配置发现
+// 客户端「作为局域网主机」一键运行与独立部署同源的 server.js（无需另装 Node.js），
+// 并广播到局域网，其他成员在「数据库连接」页自动发现、一键填入地址。
+// ---------------------------------------------------------------------------
+const teamServerDataRoot = path.join(app.getPath('userData'), 'team-server');
+
+/** 向渲染进程推送（窗口可能尚未创建或已销毁） */
+function sendToRenderer(channel, payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, payload);
+  }
+}
+
+const discovery = createDiscovery({
+  onLog: (msg) => console.log(msg),
+  onUpdate: (list) => sendToRenderer('discovery:update', list),
+});
+
+const teamServer = createTeamServer({
+  dataRoot: teamServerDataRoot,
+  appDir: __dirname,
+  resourcesPath: process.resourcesPath,
+  isPackaged: app.isPackaged,
+  execPath: process.execPath,
+  version: app.getVersion(),
+  onLog: (line) => sendToRenderer('team-server:log', { line, ts: Date.now() }),
+  onState: (state) => {
+    sendToRenderer('team-server:state', state);
+    /* 服务器运行中自动广播，供局域网内其他成员发现；停止则撤销广播 */
+    if (state.running && state.port) {
+      discovery.advertise({ port: state.port, version: app.getVersion(), needToken: !!state.token });
+    } else {
+      discovery.stopAdvertise();
+    }
+  },
+});
+
+// 查询内嵌服务器状态（含可写目录、当前端口、令牌、局域网地址）
+ipcMain.handle('team-server:status', () => teamServer.status());
+
+// 启动内嵌服务器（opts: { port?, token? }）；持久标记 autoStart，下次启动自动恢复
+ipcMain.handle('team-server:start', async (event, opts) => {
+  try {
+    teamServer.setConfig({ autoStart: true });
+    return await teamServer.start(opts || {});
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+// 停止内嵌服务器；清除 autoStart，避免下次启动自动拉起
+ipcMain.handle('team-server:stop', async () => {
+  teamServer.setConfig({ autoStart: false });
+  return teamServer.stop();
+});
+
+ipcMain.handle('team-server:restart', async () => teamServer.restart());
+
+ipcMain.handle('team-server:get-config', () => teamServer.getConfig());
+
+ipcMain.handle('team-server:set-config', (event, patch) => {
+  try {
+    return { success: true, config: teamServer.setConfig(patch || {}) };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('team-server:regen-token', () => ({ success: true, token: teamServer.regenerateToken() }));
+
+// 在系统浏览器打开内嵌服务器的管理后台（仅本机可访问）
+ipcMain.handle('team-server:open-admin', () => {
+  const s = teamServer.status();
+  if (!s.running || !s.port) return { success: false, error: '内嵌服务器未运行' };
+  shell.openExternal(`http://localhost:${s.port}/admin`);
+  return { success: true };
+});
+
+// 局域网发现：开始/停止浏览；列表通过 discovery:update 事件推送，也可轮询 list
+ipcMain.handle('discovery:start', () => {
+  discovery.startBrowse();
+  return { success: true, list: discovery.list() };
+});
+ipcMain.handle('discovery:stop', () => {
+  discovery.stopBrowse();
+  return { success: true };
+});
+ipcMain.handle('discovery:list', () => discovery.list());
+
+// ---------------------------------------------------------------------------
 // 协议导出 IPC
 // ---------------------------------------------------------------------------
 
@@ -1885,6 +1981,15 @@ app.whenReady().then(() => {
   createTray();
   startAutoUpdateCheck();
   startSsePush();
+
+  /* 上次会话曾开启「作为局域网主机」则自动恢复启动内嵌服务器 */
+  try {
+    if (teamServer.getConfig().autoStart) {
+      teamServer.start({}).catch((e) => console.log('[embed] 自动启动失败:', e.message));
+    }
+  } catch (e) {
+    console.log('[embed] 读取内嵌服务器配置失败:', e.message);
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

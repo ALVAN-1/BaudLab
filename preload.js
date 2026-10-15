@@ -250,5 +250,39 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onlineUsers: {
     get: () => ipcRenderer.invoke('online-users:get'),
+  },
+
+  // --- 内嵌团队服务器（客户端「作为局域网主机」） ---
+  teamServer: {
+    status: () => ipcRenderer.invoke('team-server:status'),
+    start: (opts) => ipcRenderer.invoke('team-server:start', opts),
+    stop: () => ipcRenderer.invoke('team-server:stop'),
+    restart: () => ipcRenderer.invoke('team-server:restart'),
+    getConfig: () => ipcRenderer.invoke('team-server:get-config'),
+    setConfig: (patch) => ipcRenderer.invoke('team-server:set-config', patch),
+    regenerateToken: () => ipcRenderer.invoke('team-server:regen-token'),
+    openAdmin: () => ipcRenderer.invoke('team-server:open-admin'),
+    onState: (callback) => {
+      const handler = (event, state) => callback(state);
+      ipcRenderer.on('team-server:state', handler);
+      return () => ipcRenderer.removeListener('team-server:state', handler);
+    },
+    onLog: (callback) => {
+      const handler = (event, payload) => callback(payload);
+      ipcRenderer.on('team-server:log', handler);
+      return () => ipcRenderer.removeListener('team-server:log', handler);
+    },
+  },
+
+  // --- 局域网零配置发现（mDNS） ---
+  discovery: {
+    start: () => ipcRenderer.invoke('discovery:start'),
+    stop: () => ipcRenderer.invoke('discovery:stop'),
+    list: () => ipcRenderer.invoke('discovery:list'),
+    onUpdate: (callback) => {
+      const handler = (event, list) => callback(list);
+      ipcRenderer.on('discovery:update', handler);
+      return () => ipcRenderer.removeListener('discovery:update', handler);
+    },
   }
 });

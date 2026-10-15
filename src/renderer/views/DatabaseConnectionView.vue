@@ -53,9 +53,33 @@
               >
             </div>
             <p class="db-mode-hint">
-              在团队内网常开电脑上运行 node server.js 启动数据服务器，
-              全部成员填写同一地址即可共享协议、用户与审核数据。
+              填写下方「局域网发现的服务器」中列出的地址，或手动输入内网常开电脑的地址，
+              全部成员填写同一地址与令牌即可共享协议、用户与审核数据。
             </p>
+
+            <!-- 局域网零配置发现（mDNS） -->
+            <div class="db-discover">
+              <div class="db-discover-head">
+                <span>局域网发现的服务器</span>
+                <button type="button" class="btn-link" @click="toggleScan">
+                  {{ scanning ? '停止扫描' : '扫描' }}
+                </button>
+              </div>
+              <div v-if="discovered.length === 0" class="db-discover-empty">
+                {{ scanning ? '搜索中…' : '未发现服务器，可手动填写地址' }}
+              </div>
+              <ul v-else class="db-discover-list">
+                <li
+                  v-for="d in discovered"
+                  :key="d.url"
+                  :class="{ active: serverUrl === d.url }"
+                  @click="applyDiscovered(d)"
+                >
+                  <span class="db-disc-name">{{ d.name }}</span>
+                  <span class="db-disc-url">{{ d.url }}</span>
+                </li>
+              </ul>
+            </div>
           </template>
           <template v-else>
             <p class="db-mode-hint">
@@ -104,6 +128,62 @@
               <span :class="['task-status', task.statusClass]">{{ task.status }}</span>
             </div>
           </div>
+        </div>
+
+        <!-- 局域网主机：客户端一键把本机变成团队数据服务器（内嵌同源 server.js） -->
+        <div class="db-card db-host-card">
+          <div class="db-card-title-row">
+            <span class="db-card-title">局域网主机（本机作为服务器）</span>
+            <span :class="['status-badge', host.running ? 'active' : '']">
+              {{ host.running ? '运行中' : (host.starting ? '启动中' : '未运行') }}
+            </span>
+          </div>
+
+          <template v-if="!host.running">
+            <p class="db-mode-hint">
+              在这台电脑上启动团队数据服务器，局域网内其他成员的波特律动即可共享协议、用户与审核数据。
+              无需单独下载服务端、无需安装 Node.js，关闭应用即停止；开启后自动在局域网广播，供成员发现。
+            </p>
+            <p v-if="host.error" class="db-host-error">{{ host.error }}</p>
+            <div class="db-config-actions">
+              <button class="btn btn-primary" :disabled="host.starting" @click="startHost">
+                {{ host.starting ? '启动中…' : '启动为局域网主机' }}
+              </button>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="db-host-field">
+              <label>成员填写地址</label>
+              <div class="db-host-value">
+                <code>{{ host.host }}</code>
+                <button type="button" class="btn btn-secondary btn-mini" @click="copyText(host.host)">复制</button>
+              </div>
+            </div>
+            <div class="db-host-field">
+              <label>访问令牌</label>
+              <div class="db-host-value">
+                <code class="db-host-token">{{ host.token || '—' }}</code>
+                <button type="button" class="btn btn-secondary btn-mini" @click="copyText(host.token)">复制</button>
+                <button type="button" class="btn btn-secondary btn-mini" @click="onRegenToken">重置</button>
+              </div>
+            </div>
+            <div v-if="host.addresses && host.addresses.length > 1" class="db-host-field">
+              <label>其他网卡</label>
+              <div class="db-host-value"><code>{{ host.addresses.join('   ') }}</code></div>
+            </div>
+            <div class="db-config-actions">
+              <button class="btn btn-secondary" @click="connectSelfToHost">让本机也连接它</button>
+              <button class="btn btn-secondary" @click="openHostAdmin">打开管理后台</button>
+              <button class="btn btn-secondary" @click="stopHost">停止服务器</button>
+            </div>
+          </template>
+
+          <!-- 运行日志（最近若干行，便于排查） -->
+          <details v-if="hostLogs.length" class="db-host-logs">
+            <summary>运行日志</summary>
+            <pre>{{ hostLogs.join('\n') }}</pre>
+          </details>
         </div>
       </div>
     </div>
@@ -186,6 +266,115 @@ const showResultDialog = ref(false);
 const resultIsError = ref(false);
 const resultMessage = ref('');
 const showReloadDialog = ref(false);
+
+// --- 局域网主机（内嵌服务器）+ mDNS 零配置发现 ---
+const host = ref({
+  running: false, starting: false, port: null,
+  url: '', host: '', token: '', addresses: [], error: null,
+});
+const hostLogs = ref([]);
+const discovered = ref([]);
+const scanning = ref(false);
+const selfConnectedToHost = ref(false);
+let offHostState = null;
+let offHostLog = null;
+let offDiscovery = null;
+
+function applyHostState(s) {
+  if (!s) return;
+  host.value = {
+    running: !!s.running,
+    starting: !!s.starting,
+    port: s.port || null,
+    url: s.url || '',
+    host: s.host || '',
+    token: s.token || '',
+    addresses: Array.isArray(s.addresses) ? s.addresses : [],
+    error: s.error || null,
+  };
+}
+
+async function refreshHost() {
+  if (!hasElectron || !window.electronAPI.teamServer) return;
+  try { applyHostState(await window.electronAPI.teamServer.status()); } catch { /* 忽略 */ }
+}
+
+async function startHost() {
+  if (!hasElectron || !window.electronAPI.teamServer) return;
+  host.value = { ...host.value, starting: true, error: null };
+  const res = await window.electronAPI.teamServer.start({});
+  if (!res.success) host.value = { ...host.value, starting: false, error: res.error };
+  else applyHostState(res);
+}
+
+async function stopHost() {
+  if (!hasElectron || !window.electronAPI.teamServer) return;
+  await window.electronAPI.teamServer.stop();
+  selfConnectedToHost.value = false;
+  await refreshHost();
+}
+
+async function onRegenToken() {
+  if (!hasElectron || !window.electronAPI.teamServer) return;
+  const res = await window.electronAPI.teamServer.regenerateToken();
+  if (res && res.success) {
+    host.value = { ...host.value, token: res.token };
+    copyText(res.token);
+  }
+}
+
+async function openHostAdmin() {
+  if (!hasElectron || !window.electronAPI.teamServer) return;
+  await window.electronAPI.teamServer.openAdmin();
+}
+
+/** 让本机客户端也连到它刚启动的服务器（写入连接配置，需刷新生效） */
+async function connectSelfToHost() {
+  if (!hasElectron) return;
+  serverUrl.value = host.value.url || '';
+  serverToken.value = host.value.token || '';
+  dbMode.value = 'remote';
+  selfConnectedToHost.value = true;
+  await saveConfig();
+}
+
+async function copyText(text) {
+  if (!text) return;
+  let done = false;
+  try {
+    await navigator.clipboard.writeText(String(text));
+    done = true;
+  } catch { /* file:// 下剪贴板 API 可能不可用，走兜底 */ }
+  if (!done) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = String(text);
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch { /* 忽略 */ }
+  }
+}
+
+async function toggleScan() {
+  if (!hasElectron || !window.electronAPI.discovery) return;
+  if (scanning.value) {
+    await window.electronAPI.discovery.stop();
+    scanning.value = false;
+  } else {
+    const res = await window.electronAPI.discovery.start();
+    discovered.value = (res && res.list) || [];
+    scanning.value = true;
+  }
+}
+
+function applyDiscovered(d) {
+  // 只自动填入地址：访问令牌无法从 mDNS 获取，需由成员从主机卡片复制后手动粘贴
+  serverUrl.value = d.url || '';
+}
 
 async function loadConfig() {
   if (!hasElectron) return;
@@ -306,8 +495,33 @@ onMounted(async () => {
   startMonitor();
   await loadConfig();
   await refreshStats();
+
+  if (hasElectron && window.electronAPI.teamServer) {
+    await refreshHost();
+    offHostState = window.electronAPI.teamServer.onState(applyHostState);
+    offHostLog = window.electronAPI.teamServer.onLog(({ line }) => {
+      hostLogs.value = [...hostLogs.value, line].slice(-100);
+    });
+  }
+  if (hasElectron && window.electronAPI.discovery) {
+    offDiscovery = window.electronAPI.discovery.onUpdate((list) => { discovered.value = list || []; });
+    /* 远程模式下自动开始扫描，方便直接选服务器 */
+    if (dbMode.value === 'remote') {
+      const res = await window.electronAPI.discovery.start();
+      discovered.value = (res && res.list) || [];
+      scanning.value = true;
+    }
+  }
 });
-onUnmounted(() => { stopMonitor(); });
+onUnmounted(() => {
+  stopMonitor();
+  if (offHostState) offHostState();
+  if (offHostLog) offHostLog();
+  if (offDiscovery) offDiscovery();
+  if (scanning.value && hasElectron && window.electronAPI.discovery) {
+    window.electronAPI.discovery.stop();
+  }
+});
 </script>
 
 <style scoped>
@@ -341,4 +555,110 @@ onUnmounted(() => { stopMonitor(); });
   color: var(--text-primary);
 }
 .db-config-actions { gap: 10px; }
+
+/* 局域网主机卡片：横跨两列 */
+.db-host-card { grid-column: 1 / -1; }
+.db-host-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.db-host-field > label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.db-host-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.db-host-value code {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  word-break: break-all;
+  color: var(--text-primary);
+  background: var(--bg-primary, rgba(0, 0, 0, 0.15));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 6px);
+}
+.db-host-token { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.db-host-error { margin: 0; font-size: 12px; color: #ef4444; }
+.db-host-logs summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.db-host-logs pre {
+  margin: 8px 0 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-secondary);
+  background: var(--bg-primary, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 6px);
+}
+.btn-mini { padding: 4px 10px; font-size: 12px; }
+
+/* 局域网发现的服务器列表 */
+.db-discover {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.db-discover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.btn-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--accent-color, #3b82f6);
+  cursor: pointer;
+}
+.btn-link:hover { text-decoration: underline; }
+.db-discover-empty {
+  font-size: 12px;
+  color: var(--text-tertiary, var(--text-secondary));
+  padding: 6px 2px;
+}
+.db-discover-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow: auto;
+}
+.db-discover-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-primary, rgba(0, 0, 0, 0.12));
+}
+.db-discover-list li:hover { border-color: var(--accent-color, #3b82f6); }
+.db-discover-list li.active { border-color: var(--accent-color, #3b82f6); }
+.db-disc-name { color: var(--text-primary); }
+.db-disc-url { color: var(--text-secondary); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 </style>

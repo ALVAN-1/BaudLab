@@ -53,4 +53,38 @@ module.exports = async function (context) {
   }
   console.log('[afterPack] 裁剪完成:', removed.join(', '));
   console.log('[afterPack] MCP 文件拷贝完成:', copied.join(', '));
+
+  /* 内嵌团队服务器运行时：把同源的 server.js 及其依赖（含 better-sqlite3 原生模块）
+   * 复制到 resources/server/，客户端「作为局域网主机」时以 ELECTRON_RUN_AS_NODE 启动它。
+   * 放 asar 外是因为原生 .node 需从真实文件系统加载，且 server.js 用 __dirname 定位代码。
+   * 只复制的运行所需内容，不带源码/调试产物，体积可控。 */
+  const serverDir = path.join(appDir, 'resources', 'server');
+  fs.mkdirSync(serverDir, { recursive: true });
+  const serverFiles = ['server.js', 'db-schema.js', 'default-protocol-data.js'];
+  for (const f of serverFiles) {
+    const src = path.join(projectDir, f);
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(serverDir, f));
+  }
+  // better-sqlite3 及其运行时依赖 bindings → file-uri-to-path
+  const nmSrc = path.join(projectDir, 'node_modules');
+  const nmDst = path.join(serverDir, 'node_modules');
+  fs.mkdirSync(nmDst, { recursive: true });
+  function copyModule(name, includes) {
+    const from = path.join(nmSrc, name);
+    if (!fs.existsSync(from)) return;
+    const to = path.join(nmDst, name);
+    fs.cpSync(from, to, {
+      recursive: true,
+      filter: (src) => {
+        const rel = path.relative(from, src).replace(/\\/g, '/');
+        if (rel === '') return true;
+        return includes.some((inc) => rel === inc || rel.startsWith(inc + '/'));
+      },
+    });
+  }
+  /* 只保留运行时需要：package.json + lib/** + build/Release/*.node（剔除 deps/src/obj 等构建产物） */
+  copyModule('better-sqlite3', ['package.json', 'lib', 'build']);
+  copyModule('bindings', ['package.json', 'bindings.js']);
+  copyModule('file-uri-to-path', ['package.json', 'index.js']);
+  console.log('[afterPack] 内嵌服务器运行时已就绪:', serverDir, `(${serverFiles.length} 个文件 + node_modules)`);
 };

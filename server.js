@@ -111,8 +111,18 @@ try {
   Database = require('better-sqlite3');
 }
 
-/* ---------------- 配置 ---------------- */
-const CONFIG_PATH = path.join(__dirname, 'server.config.json');
+/* ---------------- 配置 ----------------
+ * 内嵌模式（客户端「作为局域网主机」启动本服务）通过环境变量覆盖路径与端口，
+ * 使只读安装目录（Program Files / app.asar 同级）也能运行：配置与数据库落到可写的
+ * 用户数据目录。独立部署（双击 start-server.bat）不设置这些变量，行为与原来完全一致。
+ *   BAUDLAB_SERVER_CONFIG  配置文件绝对路径（默认 __dirname/server.config.json）
+ *   BAUDLAB_SERVER_DIR     相对路径（数据库/备份目录）的基准目录（默认 __dirname）
+ *   BAUDLAB_PORT           强制端口，优先级高于配置文件
+ *   BAUDLAB_EMBEDDED=1     静默内嵌模式：跳过宽横幅，输出机器可读就绪行
+ */
+const CONFIG_PATH = process.env.BAUDLAB_SERVER_CONFIG || path.join(__dirname, 'server.config.json');
+const BASE_DIR = process.env.BAUDLAB_SERVER_DIR ? path.resolve(process.env.BAUDLAB_SERVER_DIR) : __dirname;
+const EMBEDDED = process.env.BAUDLAB_EMBEDDED === '1';
 
 function loadConfig() {
   if (fs.existsSync(CONFIG_PATH)) {
@@ -134,11 +144,11 @@ function loadConfig() {
 }
 
 const config = loadConfig();
-const PORT = parseInt(config.port, 10) || 3010;
+const PORT = parseInt(process.env.BAUDLAB_PORT, 10) || parseInt(config.port, 10) || 3010;
 let TOKEN = String(config.token || ''); // 团队访问令牌（管理台可热更新）
 const DB_PATH = path.isAbsolute(config.dbPath || '')
   ? config.dbPath
-  : path.join(__dirname, config.dbPath || path.join('server-data', 'serial_protocol.db'));
+  : path.join(BASE_DIR, config.dbPath || path.join('server-data', 'serial_protocol.db'));
 
 /* ===================== 邮件发送（内置极简 SMTP 客户端，零依赖） =====================
  * 支持 465 隐式 TLS 与 587 STARTTLS + AUTH LOGIN。
@@ -386,7 +396,7 @@ const backupCfg = {
   enabled: config.backup?.enabled !== false, // 缺省视为启用（config.backup 为 undefined 时不启用则永不备份）
   dir: path.isAbsolute(String(config.backup?.dir || ''))
     ? String(config.backup?.dir)
-    : path.join(__dirname, config.backup?.dir || path.join('server-data', 'backups')),
+    : path.join(BASE_DIR, config.backup?.dir || path.join('server-data', 'backups')),
   intervalHours: Math.max(1, parseInt(config.backup?.intervalHours, 10) || 24),
   keep: Math.max(1, parseInt(config.backup?.keep, 10) || 14),
 };
@@ -2869,6 +2879,15 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   const ips = getLanIps();
+
+  /* 内嵌模式：向宿主客户端输出机器可读就绪行后直接返回，跳过宽横幅与浏览器弹窗 */
+  if (EMBEDDED) {
+    console.log(`BAUDLAB_SERVER_READY ${JSON.stringify({ port: PORT, dbPath: DB_PATH, token: !!TOKEN })}`);
+    ips.forEach(ip => console.log(`BAUDLAB_SERVER_ADDR http://${ip}:${PORT}`));
+    logServer(`服务已就绪，监听 0.0.0.0:${PORT}（内嵌模式，数据库: ${DB_PATH}）`);
+    return;
+  }
+
   // 数据库路径用相对路径，避免面板过宽
   const dbDisplay = path.relative(__dirname, DB_PATH) || DB_PATH;
   const rows = [
@@ -2906,7 +2925,7 @@ server.listen(PORT, '0.0.0.0', () => {
 
   /* 自动打开管理台：交互式控制台（双击 .bat）启动时弹出浏览器；
    * 开机自启/守护进程（非 TTY）默认不弹，需要时配置 "autoOpenAdmin": true 强制打开 */
-  if (config.autoOpenAdmin !== false && process.stdout.isTTY) {
+  if (!EMBEDDED && config.autoOpenAdmin !== false && process.stdout.isTTY) {
     const adminUrl = `http://localhost:${PORT}/admin`;
     const opener = process.platform === 'win32'
       ? `explorer "${adminUrl}"`
@@ -2918,6 +2937,13 @@ server.listen(PORT, '0.0.0.0', () => {
   }
 });
 
+/* 监听失败（端口占用等）：显式上报，内嵌模式输出机器可读错误行供宿主客户端识别 */
+server.on('error', (err) => {
+  logError(`服务启动失败: ${C.gray}${err.message}${C.reset}`);
+  if (EMBEDDED) console.log(`BAUDLAB_SERVER_ERROR ${JSON.stringify({ code: err.code || '', message: err.message })}`);
+  process.exit(1);
+});
+
 function shutdown() {
   if (backupTimer) clearInterval(backupTimer);
   if (limiterTimer) clearInterval(limiterTimer);
@@ -2927,3 +2953,9 @@ function shutdown() {
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+/* 内嵌模式：宿主客户端退出导致 stdin 管道关闭时自动退出，避免留下孤儿服务进程 */
+if (EMBEDDED && process.stdin) {
+  process.stdin.on('end', shutdown);
+  process.stdin.on('close', shutdown);
+  process.stdin.resume();
+}

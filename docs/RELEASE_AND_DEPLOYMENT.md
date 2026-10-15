@@ -26,6 +26,11 @@
 
 - 官网下载区 `index.html`（客户端卡片）链接到 `/releases/latest`，无需随版本改动。
 - 客户端安装包只从 GitHub Release 获取；不提供独立渠道，避免版本错配。
+- 客户端安装包**内置一份可一键启动的团队服务器**：打包时 `scripts/afterPack.js` 会把
+  `server.js`、`db-schema.js`、`default-protocol-data.js` 及裁剪后的 `better-sqlite3`
+  依赖复制到 `resources/server/`（asar 之外，保证原生 `.node` 能从真实文件系统加载）。
+  用户无需安装 Node.js，也无需单独部署服务器即可在「数据库连接」页把自己变成局域网主机，
+  并通过 mDNS 被同网段成员自动发现。
 
 ## 服务器分发（2.2）
 
@@ -40,10 +45,23 @@
 这样服务器端有明确去向：它不再「藏在 git 页面」——它是同一 Release 的正式资产，
 官网有独立入口，版本号与服务端 `VERSION.json` 一一对应。
 
-### 首次部署
+### 两种共享方式
+
+| 方式 | 谁来做 | 需要什么 | 适用场景 |
+| --- | --- | --- | --- |
+| A. 客户端内置主机（推荐） | 任一成员，界面一键切换 | 仅客户端安装包 | 小队 / 临时协作，一台电脑在线即可作主机 |
+| B. 独立服务器 | 管理员 | 客户端包 + `BaudLab-Server-<version>.zip` + Node.js 22.13+ | 需要 7×24 常驻、独立于个人电脑 |
+
+方式 A 无需命令行：成员在「数据库连接」页启用主机，客户端会从 `resources/server/` 启动
+内置服务器（默认端口 3010，被占用时自动顺延 3011–3099），首次启动生成随机访问令牌，
+并通过 mDNS 广播；同网段成员的「局域网发现的服务器」列表会自动出现该主机，选中即可加入。
+内置服务器用 Electron 自带运行时（`ELECTRON_RUN_AS_NODE`）执行同一份 `server.js`，
+因此两种方式的 API、数据格式与升级节奏完全一致。
+
+### 首次部署（方式 B：独立服务器）
 
 1. 在一台成员可访问的电脑安装 Node.js **22.13 或更高版本**（内置 `node:sqlite`，
-   无需 `npm install`）。
+   无需 `npm install`）。若只需小队临时共享，请改用上面方式 A，可跳过本步骤。
 2. 解压 `BaudLab-Server-<version>.zip` 全部文件到固定目录，例如 `D:\BaudLab-Server`；
    不要只复制 `server.js`。
 3. Windows 双击 `start-server.bat`，Linux/macOS 执行 `sh start-server.sh`；控制台保持运行。

@@ -44,6 +44,8 @@ BaudLab is a desktop tool for embedded development — protocol config, signal m
 | MCP Integration | Built-in MCP server — AI coding tools talk to your serial port directly |
 | Frame Codec Engine | Custom binary formats: endianness, bit fields, checksums |
 | Local Database | SQLite local storage, fully offline, data stays on your machine |
+| One-click LAN Host | Any client can act as the team data server (same server code embedded, no Node.js install needed); stops when the app closes |
+| Zero-config Discovery | The host advertises itself over LAN mDNS; members auto-discover it and fill in address & token in one click |
 
 ## Feature Details
 
@@ -105,6 +107,8 @@ Drag components from the library (temperature sensors, switches, trends, etc.) o
 | Feature | Description |
 |---|---|
 | Local Storage | SQLite (better-sqlite3), 11 tables: protocols / commands / modules / serial logs / audits / protocol versions / roles / users / app logs / projects / notifications |
+| One-click LAN Host | Start the team data server directly from any client (embedded, same code as standalone; no Node.js install); stops when the app closes |
+| Zero-config Discovery | Auto-discover LAN hosts via mDNS and fill in address & token in one click |
 | Data Source | Team server address + access token, test connection, remote / local switching, offline marker & auto-reconnect banner |
 | Team Server | Register / login / email verification / password reset, role & permission CRUD, user management, heartbeat & online users, DB backup & integrity check, update broadcast (SSE) |
 | Identity | Login / switch user, session persistence, email suffix auto-complete |
@@ -113,11 +117,31 @@ Drag components from the library (temperature sensors, switches, trends, etc.) o
 
 System tray (minimize to background), single instance, launch at login, auto-update (electron-updater + Gitee Releases: check / download / install with progress), system notifications, system log, light / dark theme, GitHub Issue feedback (in-app direct, web fallback), MCP setup guide.
 
-## Quick Start: Team Server + Admin Console
+## Quick Start: Sharing Protocol Data
 
-BaudLab works standalone by default; for sharing protocol data across a team, start the built-in team data server.
+BaudLab works standalone by default. To share protocol data across a team there are two options — **most teams just use Option A.**
 
-### 1. Start the Server (~2 minutes)
+### Option A: Make a client the LAN host (recommended, zero deployment)
+
+No separate server download, no Node.js install:
+
+1. On an always-on machine, open BaudLab → Settings → Database Connection.
+2. Click "Start as LAN Host" on the "LAN Host (this machine as server)" card.
+   - The app starts the same data server used for standalone deployment locally, storing data in the user-data directory;
+   - A random access token is generated automatically and the host is advertised on the LAN (mDNS);
+   - Closing the app stops the server.
+3. Other members click "Scan" on the same page, pick the host under "Servers found on LAN", paste the token shown on the host card, and save.
+   - You can also enter the address from the host card manually (e.g. `http://192.168.1.100:3010`) along with the token.
+4. If Windows shows a firewall prompt on first launch, choose "Allow access".
+
+> You can also have the "local client" on the same machine connect to this embedded server
+> ("Connect this machine to it" on the host card) so the host uses the same data as a team member.
+
+### Option B: Deploy a standalone team server (for always-on, machine-independent setups)
+
+Deploy the standalone team data server on an always-on LAN machine; client auto-update does not affect it and the two upgrade independently.
+
+#### B-1. Start the Server (~2 minutes)
 
 1. Install Node.js LTS on the server machine (22.13+ required, no dependencies to install)
 2. Run `启动服务器.bat` (or `node server.js`) from the app source directory
@@ -126,7 +150,7 @@ BaudLab works standalone by default; for sharing protocol data across a team, st
    - If the Windows firewall prompt appears, choose "Allow access"
 3. The database lives at `server-data/serial_protocol.db` with built-in auto-backup (every 24 h, keeps 14 by default)
 
-### 2. Sign in to the Admin Console
+#### B-2. Sign in to the Admin Console
 
 Open `http://127.0.0.1:3010/admin` in a browser (local-only; remote requests get 403). You can:
 
@@ -140,15 +164,22 @@ Open `http://127.0.0.1:3010/admin` in a browser (local-only; remote requests get
 | Data Maintenance | DB stats, integrity check, backup list, run backup now |
 | Logs | Last 150 auth / gateway log entries |
 
-### 3. Connect Team Members
+#### B-3. Connect Team Members
 
-In the desktop app, open "Database Connection": choose "Team Server" mode → fill in the server address & access token → "Test Connection" → save. Protocol data is then shared across devices; on disconnect the app falls back to local mode and auto-reconnects when the server is back.
+In the desktop app, open "Database Connection": choose "Team Server" mode → select from "Servers found on LAN", or fill in the server address & access token → "Test Connection" → save. Protocol data is then shared across devices; on disconnect the app falls back to local mode and auto-reconnects when the server is back.
 
 ## Download
 
 Latest stable **v1.0.0** (2026-10-13) · Windows 10/11 x64 · 65.4 MB · Free · MIT License
 
 Get the installer from the official download page: <https://alvan-1.github.io/BaudLab.io/#download>
+
+Each GitHub Release carries two assets with the same version number:
+
+- **Client**: `BaudLab-Setup-x.y.z.exe` (install on every member; a single client can act as the LAN host directly — no extra deployment needed)
+- **Team Server**: `BaudLab-Server-x.y.z.zip` (optional; deploy from an admin machine only when the server must run standalone, independent of any personal PC — requires Node.js 22.13+)
+
+Download and deployment details: <https://github.com/ALVAN-1/BaudLab.io/releases/latest> and [docs/RELEASE_AND_DEPLOYMENT.md](docs/RELEASE_AND_DEPLOYMENT.md).
 
 ## Feedback
 
