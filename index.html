@@ -1010,7 +1010,7 @@ svg { display: block; }
 <section class="hero">
   <div class="container">
     <div class="hero-badge">
-      <span class="badge badge-primary"><span class="dot"></span>波特律动 BaudLab · v1.0.0 稳定版 · 2026-10-13 发布</span>
+      <span class="badge badge-primary"><span class="dot"></span>波特律动 BaudLab · <span data-ver>v1.0.0</span> 稳定版 · <span data-date>2026-10-13</span> 发布</span>
     </div>
     <h1 class="display-lg">串口协议<br>一站式管理与调试</h1>
     <p class="subhead lede">从协议配置、信号监控到实时调试、文件传输——六大工作区覆盖嵌入式开发全流程。本地优先设计，所有协议数据始终留在你的机器上。</p>
@@ -1632,7 +1632,7 @@ svg { display: block; }
     <div class="section-head reveal">
       <p class="eyebrow">下载</p>
       <h2 class="display-md">获取波特律动</h2>
-      <p class="subhead">当前稳定版本 v1.0.0，Windows 平台开箱即用。</p>
+      <p class="subhead">当前稳定版本 <span data-ver>v1.0.0</span>，Windows 平台开箱即用。</p>
     </div>
 
     <div class="dl-cards">
@@ -1646,16 +1646,16 @@ svg { display: block; }
           <span class="badge" style="margin-left:auto"><span class="dot"></span>最新</span>
         </div>
         <div class="dl-file">
-          <div class="fname">BaudLab-Setup-x.y.z.exe</div>
+          <div class="fname" data-asset-client>BaudLab-Setup-1.0.0.exe</div>
           <div class="fmeta">
-            <span><svg><use href="#i-download"/></svg>65.4 MB</span>
+            <span><svg><use href="#i-download"/></svg><span data-size-client>65.4 MB</span></span>
             <span><svg><use href="#i-cpu"/></svg>NSIS 安装包 · x64</span>
-            <span><svg><use href="#i-loop"/></svg>v1.0.0 · 2026-10-13</span>
+            <span><svg><use href="#i-loop"/></svg><span data-ver>v1.0.0</span> · <span data-date>2026-10-13</span></span>
           </div>
         </div>
         <div class="dl-actions">
           <a class="btn btn-primary btn-lg" href="https://github.com/ALVAN-1/BaudLab.io/releases/latest" target="_blank" rel="noopener">
-            <svg><use href="#i-download"/></svg>立即下载 v1.0.0
+            <svg><use href="#i-download"/></svg>立即下载 <span data-ver>v1.0.0</span>
           </a>
           <a class="btn btn-secondary" href="https://github.com/ALVAN-1/BaudLab.io/releases" target="_blank" rel="noopener">
             <svg><use href="#i-external"/></svg>历史版本
@@ -1674,7 +1674,7 @@ svg { display: block; }
           <span class="badge" style="margin-left:auto"><span class="dot"></span>同版本</span>
         </div>
         <div class="dl-file">
-          <div class="fname">BaudLab-Server-x.y.z.zip</div>
+          <div class="fname" data-asset-server>BaudLab-Server-1.0.0.zip</div>
           <div class="fmeta">
             <span><svg><use href="#i-download"/></svg>轻量部署包</span>
             <span><svg><use href="#i-cpu"/></svg>需 Node.js 22.13+</span>
@@ -1700,7 +1700,7 @@ svg { display: block; }
           <span class="n">1</span>
           <div>
             <h4>下载安装包</h4>
-            <p>点击左侧按钮获取 <span class="mono" style="color:var(--ink-muted)">BaudLab-Setup-x.y.z.exe</span>。</p>
+            <p>点击左侧按钮获取 <span class="mono" style="color:var(--ink-muted)" data-asset-client>BaudLab-Setup-1.0.0.exe</span>。</p>
           </div>
         </div>
         <div class="install-step">
@@ -1911,7 +1911,7 @@ svg { display: block; }
         <h2>准备好提升串口调试效率了吗？</h2>
         <p>免费下载，十分钟完成第一次协议联调。</p>
       </div>
-      <a class="btn btn-primary btn-lg" href="https://github.com/ALVAN-1/BaudLab.io/releases/latest" target="_blank" rel="noopener"><svg><use href="#i-download"/></svg>免费下载 v1.0.0</a>
+      <a class="btn btn-primary btn-lg" href="https://github.com/ALVAN-1/BaudLab.io/releases/latest" target="_blank" rel="noopener"><svg><use href="#i-download"/></svg>免费下载 <span data-ver>v1.0.0</span></a>
     </div>
   </div>
 </section>
@@ -1928,7 +1928,7 @@ svg { display: block; }
           波特律动 <small>BaudLab</small>
         </a>
         <p>一站式串口协议管理与调试工具。本地优先，数据不出本机。</p>
-        <span class="badge"><span class="dot"></span>v1.0.0 · 运行正常</span>
+        <span class="badge"><span class="dot"></span><span data-ver>v1.0.0</span> · 运行正常</span>
       </div>
       <div>
         <h5>产品</h5>
@@ -1997,6 +1997,34 @@ svg { display: block; }
     els.forEach(function (el) { el.classList.add('in'); });
   }, 3000);
 
+  /* 版本信息跟随 GitHub 最新 Release 自动更新；
+     读取失败（离线 / 限流 / 未发布任何 Release）时保留页面内的静态兜底值。 */
+  (function syncReleaseInfo() {
+    var API = 'https://api.github.com/repos/ALVAN-1/BaudLab.io/releases/latest';
+    function setText(selector, text) {
+      document.querySelectorAll(selector).forEach(function (el) { el.textContent = text; });
+    }
+    fetch(API, { headers: { Accept: 'application/vnd.github+json' } })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (release) {
+        if (!release) return;
+        var version = String(release.tag_name || '').replace(/^v/i, '');
+        if (!/^\d+\.\d+\.\d+$/.test(version)) return;
+        var tag = 'v' + version;
+        var date = String(release.published_at || '').slice(0, 10);
+        window.__baudlabVersion = tag;
+        setText('[data-ver]', tag);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date)) setText('[data-date]', date);
+        setText('[data-asset-client]', 'BaudLab-Setup-' + version + '.exe');
+        setText('[data-asset-server]', 'BaudLab-Server-' + version + '.zip');
+        var assets = {};
+        (release.assets || []).forEach(function (item) { assets[item.name] = item; });
+        var client = assets['BaudLab-Setup-' + version + '.exe'];
+        if (client) setText('[data-size-client]', (client.size / 1048576).toFixed(1) + ' MB');
+      })
+      .catch(function () { /* 静默保留静态值 */ });
+  })();
+
   /* 反馈表单：类型选择 + mailto 组装（邮箱拆串拼接，避免明文爬取） */
   var MAIL_USER = 'alvan1819184', MAIL_HOST = '163.com';
   var typesBox = document.getElementById('fbTypes');
@@ -2021,7 +2049,7 @@ svg { display: block; }
       '\n标题：' + title +
       '\n联系邮箱：' + (contact || '未提供') +
       '\n\n详细描述：\n' + detail +
-      '\n\n—\n版本：v1.0.0';
+      '\n\n—\n版本：' + (window.__baudlabVersion || 'v1.0.0');
     window.location.href = 'mailto:' + MAIL_USER + '@' + MAIL_HOST +
       '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
   });
