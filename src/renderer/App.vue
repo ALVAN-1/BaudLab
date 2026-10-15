@@ -170,8 +170,8 @@
             </template>
           </div>
 
-          <!-- 首次使用引导：单机 / 加入团队 / 创建团队 -->
-          <div v-else-if="!serverReady" class="login-form">
+          <!-- 使用方式引导：单机 / 加入团队 / 创建团队（启动无有效会话时先出此页） -->
+          <div v-else-if="showChooser" class="login-form">
             <div class="user-empty-state" style="padding:4px 0 10px;">
               <div class="user-empty-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -186,6 +186,10 @@
             </div>
 
             <div class="team-choice">
+              <button v-if="serverReady && serverForm.url" type="button" class="team-choice-card continue" @click="continueConfiguredMode">
+                <span class="team-choice-title">继续使用团队服务器</span>
+                <span class="team-choice-desc">{{ serverForm.url }}<template v-if="sessionState === 'unreachable'">（当前不可达）</template></span>
+              </button>
               <button type="button" class="team-choice-card" :class="{ active: showJoinPanel }" @click="toggleJoinPanel">
                 <span class="team-choice-title">加入团队</span>
                 <span class="team-choice-desc">扫描局域网或填写同事主机地址</span>
@@ -1125,6 +1129,9 @@ const firstAdminForm = reactive({ email: '', password: '', displayName: '' });
 const firstAdminBusy = ref(false);
 const firstAdminError = ref('');
 const canFirstAdmin = computed(() => !!firstAdminForm.email.trim() && firstAdminForm.password.length >= 8);
+/* 启动引导：无有效会话时先显示「选择使用方式」，已配置团队时顶部给「继续」快捷入口 */
+const chooseMode = ref(true);
+const showChooser = computed(() => !serverReady.value || chooseMode.value);
 const loginForm = reactive({ email: '', password: '' });
 const showLoginPassword = ref(false);
 const rememberPassword = ref(false);
@@ -1310,6 +1317,7 @@ async function initLogin() {
     }
     return;
   }
+  chooseMode.value = true; /* 启动先出「选择使用方式」，有有效会话时下面会跳过 */
   try {
     const cfg = await window.electronAPI.dbConfig.get();
     if (!(cfg.mode === 'remote' && cfg.effective === 'remote' && cfg.url)) {
@@ -1331,6 +1339,9 @@ async function initLogin() {
       return;
     }
     serverReady.value = true;
+    /* 记下已配置的服务器，供选择页「继续使用团队服务器」快捷卡片展示与重连 */
+    serverForm.url = cfg.url || serverForm.url;
+    serverForm.token = cfg.token || serverForm.token;
   } catch {
     serverReady.value = true; /* 配置读取失败按团队模式尝试 */
   }
@@ -1662,6 +1673,7 @@ async function doConnectServer() {
     serverReady.value = true;
     sessionState.value = 'none';
     await initLogin();
+    chooseMode.value = false; /* 已选定团队服务器，进入邮箱登录 */
     if (!showLogin.value) {
       showFallbackDialog.value = false;
       startupReady.value = true;
@@ -1670,6 +1682,17 @@ async function doConnectServer() {
     loginError.value = '连接失败：' + (e.message || e);
   }
   authBusy.value = false;
+}
+
+/* 选择页「继续使用团队服务器」：沿用已保存的地址/令牌，直接进入邮箱登录 */
+function continueConfiguredMode() {
+  if (!serverForm.url) return;
+  serverReady.value = true;
+  chooseMode.value = false;
+  loginError.value = '';
+  showJoinPanel.value = false;
+  stopLoginScan();
+  loginView.value = 'login';
 }
 
 /* ---- 首次使用引导：加入团队（扫描）/ 一键成为主机 / 首个管理员 ---- */
@@ -1725,6 +1748,7 @@ async function becomeHostAndConnect() {
     serverReady.value = true;
     sessionState.value = 'none';
     await initLogin();
+    chooseMode.value = false; /* 主机已就绪，进入登录/创建管理员 */
     if (!showLogin.value) { showFallbackDialog.value = false; startupReady.value = true; }
     /* 本机作为主机：若还没有可登录管理员，引导直接创建（免邮箱） */
     if (ts.admin) {

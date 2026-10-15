@@ -5482,6 +5482,11 @@ body.dark .pwd-eye-btn:hover {
   background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
 }
 .team-choice-card.active { border-color: var(--accent, #ff6a00); }
+/* 已配置团队时的「继续使用」置顶卡片：强调为主操作 */
+.team-choice-card.continue {
+  border-color: var(--accent, #ff6a00);
+  background: color-mix(in srgb, var(--accent, #ff6a00) 12%, transparent);
+}
 .team-choice-card:disabled { opacity: .55; cursor: default; }
 .team-choice-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .team-choice-desc { font-size: 12px; color: var(--text-tertiary, #94a3b8); }
