@@ -96,8 +96,9 @@
 1. 新版本安装包已改为 `provider: github`；**旧版本无法自动跳到新源**，需要用户手动
    下载一次 v1.0.0 或更高版本的安装包覆盖安装。
 2. 从 v1.0.0 起，后续版本的自动更新走 GitHub Release，无需再手动迁移。
-3. 官网与 README 文案已统一改为 GitHub 渠道；如仍有旧 Gitee 链接，用
-   `release-tools/migrate-index-html.js` 的写法批量替换并校验命中数。
+3. 官网与 README 文案已统一改为 GitHub 渠道；官网下载区的版本号、发布日期与文件名
+   会在页面加载时从 GitHub 最新 Release 自动同步，无需再手工批量替换。如仍有旧 Gitee
+   链接残留，手工替换后逐个校验命中数即可。
 
 ## 发布操作速查
 

@@ -339,6 +339,35 @@ class Pipeline:
                 problems.append("服务器包缺少模板: release-tools/server/" + name)
         return problems
 
+    def prune_build_dirs(self):
+        """删除上次构建残留的 .work 临时目录；每次构建都会重新创建（失败时留待下次清理）。"""
+        work_root = self.root / "release-tools/.work"
+        if not work_root.is_dir():
+            return
+        removed = 0
+        for entry in work_root.iterdir():
+            if entry.is_dir():
+                shutil.rmtree(entry, ignore_errors=True)
+            else:
+                entry.unlink(missing_ok=True)
+            removed += 1
+        if removed:
+            self.log(f"已清理上次构建的临时目录 {removed} 项（.work）")
+
+    def prune_outputs(self, keep):
+        """产物目录只保留最新一份，删除历史产物，避免逐个版本堆积。"""
+        out_root = self.root / "release-tools/output"
+        if not out_root.is_dir():
+            return
+        keep = Path(keep).resolve()
+        removed = 0
+        for entry in out_root.iterdir():
+            if entry.is_dir() and entry.resolve() != keep:
+                shutil.rmtree(entry, ignore_errors=True)
+                removed += 1
+        if removed:
+            self.log(f"已删除历史产物目录 {removed} 份（output，仅保留最新一份）")
+
     def build(self, opts):
         opts.validate()
         self.progress(1, "环境自检")
@@ -348,6 +377,7 @@ class Pipeline:
         self.run([opts.node, "--version"])
         sync_metadata(self.root, opts)
         fingerprint = self.fingerprint()
+        self.prune_build_dirs()
         work = self.root / "release-tools/.work" / (opts.tag + "-" + uuid.uuid4().hex[:8])
         work.mkdir(parents=True)
         builder = work / "builder"
@@ -390,6 +420,8 @@ class Pipeline:
         write_json(output / "manifest.json", {"schema": 1, "built_at": datetime.now(timezone.utc).isoformat(),
                    "options": asdict(opts), "source_sha256": fingerprint, "assets": entries})
         self.progress(72, "客户端安装包与服务器部署包已生成")
+        shutil.rmtree(work, ignore_errors=True)
+        self.prune_outputs(output)
         self.log("产物目录: " + str(output))
         return output
 

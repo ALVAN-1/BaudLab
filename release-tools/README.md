@@ -17,9 +17,6 @@
 | `verify-artifacts.cjs` | 构建后校验安装包、`latest.yml`、`app-update.yml`、asar 与 MCP 资源 |
 | `server/` | 服务器部署包模板（启动脚本、示例配置、部署 README） |
 | `RELEASE_NOTES.md` | 当前待发布的版本说明（会被写入 Release 与更新提示） |
-| `migrate-index-html.js` | 官网 `index.html` 渠道/版本批量替换，带命中数校验（留档复用） |
-| `redraw_welcome.py` | 历史遗留：重画安装器侧边图（当前 `nsis` 未启用侧边图，一般不需要） |
-| `build-release.bat` | 历史遗留：只跑 `npm run build` 的等价脚本，已被 GUI 工具取代 |
 
 ## 日常使用
 
@@ -37,7 +34,7 @@ release-tools\start-release-tool.bat
 
 > 发布前请先**人工提交所有源码改动**：工具只提交发布元数据
 > （`package.json` / `package-lock.json` / `RELEASE_NOTES.md`），其余未提交改动会阻断发布。
-> 同名 tag 不会被覆盖；版本号必须高于当前公开稳定版。
+> **远程**同名 tag 不会被覆盖；若远程 tag 已被删除而本地仍有同名残留 tag，工具会把它重建到当前提交。
 
 ## 产物
 
@@ -53,6 +50,9 @@ release-notes-<tag>.md             # 版本说明存档
 RELEASE_AND_DEPLOYMENT.md          # 分发/部署说明副本
 manifest.json                      # 本次发布元数据 + 源码指纹
 ```
+
+> 构建成功后自动清理：删除本次 `release-tools/.work/` 临时目录，并把
+> `release-tools/output/` 收敛为最新一份。上次失败遗留的 `.work/` 会在下次构建开始时清掉。
 
 ## 发布流程清单
 
