@@ -84,6 +84,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     integrityCheck: () => ipcRenderer.invoke('db:integrity-check')
   },
 
+  // --- 数据/数据库保存目录（更新时可浏览切换，重启后生效） ---
+  dataDir: {
+    get: () => ipcRenderer.invoke('data-dir:get'),
+    choose: () => ipcRenderer.invoke('data-dir:choose'),
+    set: (dir) => ipcRenderer.invoke('data-dir:set', dir),
+    relaunch: () => ipcRenderer.invoke('app:relaunch'),
+  },
+
   // --- 协议草稿（远程模式下本地暂存，审核通过后发布） ---
   draft: {
     save: (statements, protoName) => ipcRenderer.invoke('draft:save', { statements, protoName }),
@@ -255,6 +263,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // --- 内嵌团队服务器（客户端「作为局域网主机」） ---
   teamServer: {
     status: () => ipcRenderer.invoke('team-server:status'),
+    // 数据目录：创建团队时先弹窗让用户浏览选路径，再启动服务端
+    dataRoot: () => ipcRenderer.invoke('team-server:data-root'),
+    chooseDataRoot: () => ipcRenderer.invoke('team-server:choose-data-root'),
+    setDataRoot: (dir) => ipcRenderer.invoke('team-server:set-data-root', dir),
     start: (opts) => ipcRenderer.invoke('team-server:start', opts),
     stop: () => ipcRenderer.invoke('team-server:stop'),
     restart: () => ipcRenderer.invoke('team-server:restart'),

@@ -41,9 +41,29 @@ if (INSTANCE_NAME) {
 const baseDataDir = app.isPackaged
   ? path.join(app.getPath('userData'), 'data')
   : path.join(__dirname, 'data');
-const dataDir = INSTANCE_NAME
+const defaultDataDir = INSTANCE_NAME
   ? path.join(baseDataDir, 'instances', INSTANCE_NAME)
   : baseDataDir;
+
+/* 用户自定义的数据/数据库保存目录（更新下载时可浏览选择）。
+ * 指针文件固定放在 userData 下：不能放进数据目录，否则换到新目录后旧指针就跟着搬走了。
+ * 目标必须仍存在且是目录才生效，否则回退默认目录，避免数据库落到一个已不存在的路径。 */
+const dataDirPointerPath = path.join(app.getPath('userData'), 'data-dir.json');
+function readCustomDataDir() {
+  try {
+    if (fs.existsSync(dataDirPointerPath)) {
+      const parsed = JSON.parse(fs.readFileSync(dataDirPointerPath, 'utf-8')) || {};
+      const dir = String(parsed.dataDir || '').trim();
+      if (dir && fs.existsSync(dir) && fs.statSync(dir).isDirectory()) return dir;
+      if (dir) console.warn('[DB] 自定义数据目录不可用，回退默认:', dir);
+    }
+  } catch (e) {
+    console.warn('[DB] 读取自定义数据目录失败:', e.message);
+  }
+  return '';
+}
+const customDataDir = readCustomDataDir();
+const dataDir = customDataDir || defaultDataDir;
 
 // ---------------------------------------------------------------------------
 // 数据库初始化
@@ -1073,6 +1093,112 @@ ipcMain.handle('db:backup-list', async () => {
   }
 });
 
+/* =========================================================================
+ * 数据/数据库保存目录：查询、浏览选择、切换（重启应用后生效）
+ * ===================================================================== */
+
+/* 把当前数据迁到用户选定目录。
+ * 数据库运行期间是打开的，直接复制 .db/.wal 会拿到不一致副本，
+ * 因此用 VACUUM INTO 生成一致性快照；草稿/配置/令牌等其余文件直接复制。
+ * 目标目录里已存在的同名文件一律保留，绝不覆盖用户已有数据。 */
+function migrateDataTo(targetDir) {
+  const notes = [];
+  const skipped = [];
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  const targetDb = path.join(targetDir, 'serial_protocol.db');
+  if (fs.existsSync(targetDb)) {
+    notes.push('目标目录已有数据库文件，已直接使用它（未覆盖）');
+  } else if (db) {
+    db.exec(`VACUUM INTO '${targetDb.replace(/'/g, "''")}'`);
+    notes.push('已生成数据库快照 serial_protocol.db');
+  } else {
+    notes.push('数据库尚未初始化，未生成快照');
+  }
+
+  for (const name of fs.readdirSync(dataDir)) {
+    /* 数据库本体与 wal/shm 由上面的快照逻辑负责，不能直接搬 */
+    if (name.startsWith('serial_protocol.db')) continue;
+    const src = path.join(dataDir, name);
+    const dst = path.join(targetDir, name);
+    try {
+      if (fs.existsSync(dst)) { skipped.push(name); continue; }
+      const stat = fs.statSync(src);
+      if (stat.isDirectory()) fs.cpSync(src, dst, { recursive: true });
+      else fs.copyFileSync(src, dst);
+    } catch (e) {
+      console.warn('[DB] 迁移数据文件失败:', name, e.message);
+    }
+  }
+  if (skipped.length) notes.push(`保留了 ${skipped.length} 个同名文件（未覆盖）`);
+  return notes;
+}
+
+ipcMain.handle('data-dir:get', () => ({
+  success: true,
+  dataDir,
+  defaultDir: defaultDataDir,
+  custom: !!customDataDir,
+}));
+
+/* 浏览：打开系统文件夹选择器 */
+ipcMain.handle('data-dir:choose', async () => {
+  try {
+    const opts = {
+      title: '选择协议数据与数据库的保存目录',
+      defaultPath: dataDir,
+      properties: ['openDirectory', 'createDirectory'],
+    };
+    const { canceled, filePaths } = (mainWindow && !mainWindow.isDestroyed())
+      ? await dialog.showOpenDialog(mainWindow, opts)
+      : await dialog.showOpenDialog(opts);
+    if (canceled || !filePaths.length) return { success: false, canceled: true };
+    return { success: true, path: filePaths[0] };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+/* 切换：校验 → 迁移数据 → 写指针（重启后生效） */
+ipcMain.handle('data-dir:set', async (_event, dir) => {
+  try {
+    const target = String(dir || '').trim();
+    if (!target) return { success: false, error: '目录不能为空' };
+    if (!path.isAbsolute(target)) return { success: false, error: '请选择一个绝对路径' };
+    if (!fs.existsSync(target) || !fs.statSync(target).isDirectory()) {
+      return { success: false, error: '目录不存在，请先选择或新建一个目录' };
+    }
+    const resolved = path.resolve(target);
+    const resolvedCurrent = path.resolve(dataDir);
+    if (resolved === resolvedCurrent) {
+      return { success: true, changed: false, dataDir, notes: [] };
+    }
+    // 新目录若落在当前数据目录里，迁移会变成自我复制（cpSync 直接报错），直接拒绝
+    if (resolved.startsWith(resolvedCurrent + path.sep)) {
+      return { success: false, error: '不能选择当前数据目录内部的子目录' };
+    }
+    const notes = migrateDataTo(resolved);
+    fs.mkdirSync(path.dirname(dataDirPointerPath), { recursive: true });
+    fs.writeFileSync(dataDirPointerPath, JSON.stringify({ dataDir: resolved }, null, 2));
+    console.log('[DB] 数据目录已切换 →', resolved, '（重启应用后生效）');
+    return { success: true, changed: true, dataDir: resolved, notes, requireRestart: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+/* 切换后需重启才能读到新位置（数据库句柄在启动时已绑定）。
+ * 用 quit 而非 exit：before-quit 里要停团队服务器、MCP 桥，且已下载的更新会随退出一并安装。 */
+ipcMain.handle('app:relaunch', () => {
+  try {
+    app.relaunch();
+    app.quit();
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 // 完整性检查
 ipcMain.handle('db:integrity-check', async () => {
   if (!db) return { success: false, error: '数据库未初始化' };
@@ -1257,7 +1383,24 @@ ipcMain.handle('db-config:test', async (event, cfg) => {
 // 客户端「作为局域网主机」一键运行与独立部署同源的 server.js（无需另装 Node.js），
 // 并广播到局域网，其他成员在「数据库连接」页自动发现、一键填入地址。
 // ---------------------------------------------------------------------------
-const teamServerDataRoot = path.join(app.getPath('userData'), 'team-server');
+/* 团队服务器数据目录：默认 userData/team-server，用户可在「创建团队」弹窗里浏览改选。
+ * 指针文件同样固定放在 userData 下（与 data-dir.json 同理）：不能跟着数据目录搬，
+ * 否则换过一次目录后重启就找不回原位置，已建好的团队会凭空变空的。 */
+const teamServerRootPointer = path.join(app.getPath('userData'), 'team-server-dir.json');
+function readTeamServerRoot() {
+  try {
+    if (fs.existsSync(teamServerRootPointer)) {
+      const parsed = JSON.parse(fs.readFileSync(teamServerRootPointer, 'utf-8')) || {};
+      const dir = String(parsed.dataRoot || '').trim();
+      if (dir && fs.existsSync(dir) && fs.statSync(dir).isDirectory()) return dir;
+      if (dir) console.warn('[embed] 团队服务器数据目录不可用，回退默认:', dir);
+    }
+  } catch (e) {
+    console.warn('[embed] 读取团队服务器数据目录失败:', e.message);
+  }
+  return '';
+}
+const teamServerDataRoot = readTeamServerRoot() || path.join(app.getPath('userData'), 'team-server');
 
 /** 向渲染进程推送（窗口可能尚未创建或已销毁） */
 function sendToRenderer(channel, payload) {
@@ -1292,6 +1435,48 @@ const teamServer = createTeamServer({
 
 // 查询内嵌服务器状态（含可写目录、当前端口、令牌、局域网地址）
 ipcMain.handle('team-server:status', () => teamServer.status());
+
+/* ---- 团队服务器数据目录：查询 / 浏览 / 切换（「创建团队」弹窗使用） ---- */
+
+ipcMain.handle('team-server:data-root', () => ({
+  success: true,
+  dataRoot: teamServer.getDataRoot(),
+  defaultRoot: path.join(app.getPath('userData'), 'team-server'),
+}));
+
+ipcMain.handle('team-server:choose-data-root', async () => {
+  try {
+    const opts = {
+      title: '选择团队服务器数据目录',
+      defaultPath: teamServer.getDataRoot(),
+      properties: ['openDirectory', 'createDirectory'],
+    };
+    const { canceled, filePaths } = (mainWindow && !mainWindow.isDestroyed())
+      ? await dialog.showOpenDialog(mainWindow, opts)
+      : await dialog.showOpenDialog(opts);
+    if (canceled || !filePaths.length) return { success: false, canceled: true };
+    return { success: true, path: filePaths[0] };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+/* 切换：由 server-embed 校验并迁移已有团队数据，成功后把选择写入指针文件，
+ * 之后每次启动（含 autoStart 自动恢复）都从指针读到用户选的目录。 */
+ipcMain.handle('team-server:set-data-root', (_event, dir) => {
+  try {
+    const r = teamServer.setDataRoot(dir);
+    if (!r || !r.success) return { success: false, error: (r && r.error) || '修改数据目录失败' };
+    if (r.changed) {
+      fs.mkdirSync(path.dirname(teamServerRootPointer), { recursive: true });
+      fs.writeFileSync(teamServerRootPointer, JSON.stringify({ dataRoot: r.dataRoot }, null, 2));
+      console.log('[embed] 团队服务器数据目录已切换 →', r.dataRoot);
+    }
+    return r;
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
 
 // 启动内嵌服务器（opts: { port?, token? }）；持久标记 autoStart，下次启动自动恢复
 ipcMain.handle('team-server:start', async (event, opts) => {

@@ -6011,12 +6011,20 @@ body.dark .pwd-eye-btn:hover {
   z-index: 10001;
   max-width: 420px;
   pointer-events: none;
+  /* 卡片固定白底（保持既有观感），故在此作用域内把主题令牌重设为浅色值：
+     内嵌的目录选择器（用 CSS 变量取色）在深色模式下也能正确显示深色文字 */
+  --text-primary: #1a1a1a;
+  --text-tertiary: #999999;
+  --border-light: rgba(0, 0, 0, 0.12);
+  --bg-secondary: #f4f4f5;
+  --bg-hover: #f4f4f5;
+  --bg-active: #e9eaee;
 }
 
 .update-card {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  gap: 12px;
   padding: 16px 18px;
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -6026,6 +6034,86 @@ body.dark .pwd-eye-btn:hover {
   overflow-y: auto;
   pointer-events: auto;
 }
+
+/* 显示数据/数据库保存目录时，卡片需要更多高度（内容改为上下两段） */
+.update-card.has-datadir { max-height: 360px; }
+
+/* 第一段：图标 + 文字 + 操作按钮 + 关闭（与原来的单行 flex 等价） */
+.update-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* 第二段：数据/数据库保存目录选择器（组件自带上边分隔线与内边距） */
+.update-datadir { min-width: 0; }
+
+/* =========================================================================
+ * 目录选择行 — 更新弹窗的「数据/数据库保存目录」与「创建团队」数据目录弹窗共用
+ * 取色全部走主题令牌，所以白底作用域（.update-toast）里会被其浅色令牌覆盖
+ * ===================================================================== */
+.dirpick-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dirpick-input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md, 8px);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.dirpick-input:focus { border-color: var(--accent); }
+.dirpick-input::placeholder { color: var(--text-tertiary); }
+
+.dirpick-btn {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.dirpick-btn:hover:not(:disabled) {
+  background: var(--bg-active);
+  border-color: var(--accent);
+}
+
+.dirpick-btn:disabled { opacity: 0.55; cursor: default; }
+
+.dirpick-btn.primary {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.dirpick-btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.dirpick-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+.dirpick-hint.ok { color: var(--accent-green); }
+.dirpick-hint.err { color: var(--accent-red); }
 
 .update-circle {
   width: 40px;

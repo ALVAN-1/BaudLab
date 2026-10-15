@@ -78,10 +78,14 @@ function lanAddresses() {
  * @param {(state:object)=>void} [deps.onState]
  */
 function createTeamServer(deps) {
-  const { dataRoot, appDir, resourcesPath, isPackaged, execPath, version } = deps;
+  /* 数据根目录 = 配置 / 数据库 / 备份的基准目录。用户可在「创建团队」弹窗里浏览改选，
+   * 故必须可变：子进程启动时按当时的值生成 BAUDLAB_SERVER_CONFIG / BAUDLAB_SERVER_DIR，
+   * 运行中改会让配置和数据库指向两个不同目录，因此 setDataRoot 仅在服务端未运行时允许。 */
+  let dataRoot = deps.dataRoot;
+  let configPath = path.join(dataRoot, 'server.config.json');
+  const { appDir, resourcesPath, isPackaged, execPath, version } = deps;
   const onLog = deps.onLog || (() => {});
   const onState = deps.onState || (() => {});
-  const configPath = path.join(dataRoot, 'server.config.json');
 
   let child = null;
   let stopping = false;
@@ -315,6 +319,58 @@ function createTeamServer(deps) {
     return cfg.token;
   }
 
+  function getDataRoot() { return dataRoot; }
+
+  /* 用户浏览选择新的数据目录（创建团队时的弹窗）。
+   * 迁移规则：不删除源目录；目标已存在的同名文件一律保留，绝不覆盖另一个团队的数据。
+   * 令牌（server.config.json）是成员已授权的凭证，只有在目标没有自己的团队时才随数据一起搬，
+   * 否则会出现「A 的令牌打开 B 的数据库」的串台。 */
+  function setDataRoot(dir) {
+    const target = String(dir || '').trim();
+    if (!target) return { success: false, error: '目录不能为空' };
+    if (!path.isAbsolute(target)) return { success: false, error: '请选择一个绝对路径' };
+
+    const resolved = path.resolve(target);
+    const current = path.resolve(dataRoot);
+    /* 与当前一致就直接放行：重进「创建团队」时路径没改，不能被下面的运行中限制挡住 */
+    if (resolved === current) return { success: true, changed: false, dataRoot, notes: [] };
+    /* 目标落在当前目录里会导致 server-data 复制到自身内部 */
+    if (resolved.startsWith(current + path.sep)) {
+      return { success: false, error: '不能选择当前数据目录内部的子目录' };
+    }
+    /* 换目录才需要停机：运行中改会让 BAUDLAB_SERVER_CONFIG 与 BAUDLAB_SERVER_DIR 对不上。
+     * code 供调用方判断是否可先 stop 再重试。 */
+    if (state.running || state.starting) {
+      return { success: false, code: 'running', error: '团队服务器正在运行，请先停止再修改数据目录' };
+    }
+
+    const notes = [];
+    fs.mkdirSync(resolved, { recursive: true });
+    const srcDb = path.join(current, 'server-data');
+    const dstDb = path.join(resolved, 'server-data');
+    const srcCfg = path.join(current, 'server.config.json');
+    const dstCfg = path.join(resolved, 'server.config.json');
+    const targetHasDb = fs.existsSync(path.join(dstDb, 'serial_protocol.db'));
+
+    if (targetHasDb) {
+      notes.push('目标目录已有团队数据库，已直接使用它（未覆盖）');
+    } else {
+      if (fs.existsSync(srcDb)) {
+        fs.cpSync(srcDb, dstDb, { recursive: true });
+        notes.push('已复制团队数据 server-data');
+      }
+      if (fs.existsSync(srcCfg) && !fs.existsSync(dstCfg)) {
+        fs.copyFileSync(srcCfg, dstCfg);
+        notes.push('已复制服务端配置（保留令牌）');
+      }
+    }
+
+    dataRoot = resolved;
+    configPath = path.join(dataRoot, 'server.config.json');
+    log(`[embed] 数据目录已切换 → ${dataRoot}`);
+    return { success: true, changed: true, dataRoot, notes };
+  }
+
   return {
     start,
     stop,
@@ -323,6 +379,8 @@ function createTeamServer(deps) {
     getConfig,
     setConfig,
     regenerateToken,
+    getDataRoot,
+    setDataRoot,
     get running() { return state.running; },
   };
 }

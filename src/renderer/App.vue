@@ -34,6 +34,48 @@
   <!-- 用户选择弹窗 -->
   <Transition name="modal-fade">
     <div v-if="showLogin" class="login-overlay">
+      <!-- 选中「创建团队」时先弹窗问数据目录：团队数据库/配置/备份存哪儿由用户浏览决定。
+           必须放在 .login-overlay 内（与 .login-dialog 同级）：主界面 .app-window 在
+           登录期是 v-show 隐藏的，挂在那里弹窗永远出不来。 -->
+      <Transition name="modal-fade">
+        <div v-if="showTeamDirDialog" class="modal-overlay" @click.self="closeTeamDirDialog">
+          <div class="modal-dialog" style="max-width:460px;">
+            <div class="modal-header">
+              <h3>选择团队服务器数据目录</h3>
+            </div>
+            <div class="modal-body">
+              <p style="color:var(--text-secondary);line-height:1.6;font-size:13px;margin:0 0 12px;">
+                本机将作为团队服务器运行，团队数据库、服务端配置与备份都会保存在这个文件夹里。<br>
+                默认在应用数据目录下，可浏览改为自定义位置。
+              </p>
+              <div class="dirpick-row">
+                <input
+                  v-model="teamDirForm.path"
+                  class="dirpick-input"
+                  type="text"
+                  spellcheck="false"
+                  placeholder="选择团队数据保存的文件夹"
+                  @keyup.enter="confirmCreateTeam"
+                />
+                <button type="button" class="dirpick-btn" :disabled="teamDirForm.busy" @click="browseTeamDir">浏览</button>
+              </div>
+              <div
+                class="dirpick-hint"
+                style="margin-top:8px;"
+                :class="{ ok: teamDirForm.ok, err: teamDirForm.err }"
+              >{{ teamDirForm.hint }}</div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" :disabled="teamDirForm.busy" @click="closeTeamDirDialog">取消</button>
+              <button
+                class="btn btn-primary"
+                :disabled="teamDirForm.busy || !teamDirForm.path.trim()"
+                @click="confirmCreateTeam"
+              >{{ teamDirForm.busy ? '处理中…' : '创建团队' }}</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
       <div class="login-dialog" :class="{ 'dialog-wide': chooserVisible }">
         <div class="login-header">
           <!-- 二级页（创建管理员账号）右上角返回：回到「选择使用方式」 -->
@@ -208,7 +250,7 @@
                 <span class="team-choice-title">加入团队</span>
                 <span class="team-choice-desc">扫描局域网或填写同事主机地址</span>
               </button>
-              <button type="button" class="team-choice-card" :disabled="hostBusy || authBusy" @click="becomeHostAndConnect">
+              <button type="button" class="team-choice-card" :disabled="hostBusy || authBusy" @click="openTeamDirDialog">
                 <span class="team-choice-icon" aria-hidden="true">
                   <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-plus"/></svg>
                 </span>
@@ -802,6 +844,10 @@
                 <div v-if="updateCheckResult.releaseNotes" style="background:var(--bg-hover);border-radius:var(--radius-md);padding:10px 12px;font-size:12.5px;color:var(--text-secondary);line-height:1.5;max-height:120px;overflow-y:auto;">
                   {{ updateCheckResult.releaseNotes }}
                 </div>
+                <!-- 下载前询问数据/数据库保存目录，用户可浏览改为自定义文件夹 -->
+                <div style="margin-top:12px;">
+                  <DataDirPicker />
+                </div>
               </div>
 
               <!-- 错误 -->
@@ -1028,39 +1074,46 @@
     <!-- 自动更新通知（右下角 Toast） -->
     <Transition name="slide-up">
       <div v-if="updateVisible" class="update-toast">
-        <div class="update-card">
-          <!-- 圆形图标 -->
-          <div class="update-circle" :class="updateStatus">
-            <svg v-if="updateStatus === 'available'" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-download"/></svg>
-            <svg v-else-if="updateStatus === 'downloading'" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinning"><use href="#i-refresh-cw"/></svg>
-            <svg v-else-if="updateStatus === 'downloaded'" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>
-            <svg v-else width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-alert-circle"/></svg>
+        <div class="update-card" :class="{ 'has-datadir': showDataDirPrompt }">
+          <div class="update-main">
+            <!-- 圆形图标 -->
+            <div class="update-circle" :class="updateStatus">
+              <svg v-if="updateStatus === 'available'" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-download"/></svg>
+              <svg v-else-if="updateStatus === 'downloading'" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinning"><use href="#i-refresh-cw"/></svg>
+              <svg v-else-if="updateStatus === 'downloaded'" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>
+              <svg v-else width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-alert-circle"/></svg>
+            </div>
+
+            <!-- 文字区 -->
+            <div class="update-text">
+              <div class="update-headline">
+                <span v-if="updateStatus === 'available'">发现新版本 v{{ updateInfo.version }}</span>
+                <span v-else-if="updateStatus === 'downloading'">正在下载更新… {{ downloadPercent }}%</span>
+                <span v-else-if="updateStatus === 'downloaded'">更新就绪</span>
+                <span v-else-if="updateStatus === 'installing'">正在安装更新…</span>
+                <span v-else>更新失败</span>
+              </div>
+              <div class="update-sub">
+                <span v-if="updateStatus === 'available'">当前版本 v{{ updateInfo.currentVersion }}，点击下载更新</span>
+                <span v-else-if="updateStatus === 'downloading'" class="update-progress-track"><i class="update-progress-fill" :style="{ width: downloadPercent + '%' }"></i></span>
+                <span v-else-if="updateStatus === 'downloaded'">点击重启以更新</span>
+                <span v-else>{{ updateError }}</span>
+              </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <button v-if="updateStatus === 'available'" class="update-btn" @click="startDownloadUpdate">下载</button>
+            <button v-else-if="updateStatus === 'downloaded'" class="update-btn" @click="installUpdate">立即重启</button>
+            <button v-else-if="updateStatus === 'error'" class="update-btn" @click="retryUpdate">重试</button>
+
+            <!-- 关闭按钮 -->
+            <button class="update-close" @click="updateVisible = false">×</button>
           </div>
 
-          <!-- 文字区 -->
-          <div class="update-text">
-            <div class="update-headline">
-              <span v-if="updateStatus === 'available'">发现新版本 v{{ updateInfo.version }}</span>
-              <span v-else-if="updateStatus === 'downloading'">正在下载更新… {{ downloadPercent }}%</span>
-              <span v-else-if="updateStatus === 'downloaded'">更新就绪</span>
-              <span v-else-if="updateStatus === 'installing'">正在安装更新…</span>
-              <span v-else>更新失败</span>
-            </div>
-            <div class="update-sub">
-              <span v-if="updateStatus === 'available'">当前版本 v{{ updateInfo.currentVersion }}，点击下载更新</span>
-              <span v-else-if="updateStatus === 'downloading'" class="update-progress-track"><i class="update-progress-fill" :style="{ width: downloadPercent + '%' }"></i></span>
-              <span v-else-if="updateStatus === 'downloaded'">点击重启以更新</span>
-              <span v-else>{{ updateError }}</span>
-            </div>
+          <!-- 下载时询问：数据/数据库保存目录，用户可浏览改为自定义文件夹 -->
+          <div v-if="showDataDirPrompt" class="update-datadir">
+            <DataDirPicker />
           </div>
-
-          <!-- 操作按钮 -->
-          <button v-if="updateStatus === 'available'" class="update-btn" @click="startDownloadUpdate">下载</button>
-          <button v-else-if="updateStatus === 'downloaded'" class="update-btn" @click="installUpdate">立即重启</button>
-          <button v-else-if="updateStatus === 'error'" class="update-btn" @click="retryUpdate">重试</button>
-
-          <!-- 关闭按钮 -->
-          <button class="update-close" @click="updateVisible = false">×</button>
         </div>
       </div>
     </Transition>
@@ -1114,6 +1167,7 @@ import ProtocolPreviewView from './views/ProtocolPreviewView.vue';
 import AiChatView from './views/AiChatView.vue';
 import McpGuideDialog from './components/McpGuideDialog.vue';
 import FireworksGreeting from './components/FireworksGreeting.vue';
+import DataDirPicker from './components/DataDirPicker.vue';
 import iconUrl from './assets/icon.svg';
 
 const hasElectron = typeof window !== 'undefined' && typeof window.electronAPI !== 'undefined';
@@ -1752,6 +1806,79 @@ async function toggleLoginScan() {
 
 function applyLoginServer(d) {
   serverForm.url = d.url || '';
+}
+
+/* ===================== 「创建团队」：先弹窗选团队数据目录 =====================
+ * 团队服务器的数据根目录（server.config.json + server-data/）由用户浏览选定，
+ * 不与本机协议库共用路径。弹窗确认后才真正启动内嵌服务器。 */
+const showTeamDirDialog = ref(false);
+const teamDirForm = reactive({ path: '', busy: false, hint: '', ok: false, err: false });
+const TEAM_DIR_DEFAULT_HINT = '团队数据库、服务端配置与备份会保存到这个文件夹';
+
+function teamServerApi() {
+  return (hasElectron && window.electronAPI && window.electronAPI.teamServer) || null;
+}
+
+async function openTeamDirDialog() {
+  const ts = teamServerApi();
+  /* 运行环境不提供该能力时保持原行为直接启动，别让整条路径失效 */
+  if (!ts || !ts.dataRoot) { await becomeHostAndConnect(); return; }
+  showTeamDirDialog.value = true;
+  Object.assign(teamDirForm, { path: '', busy: false, ok: false, err: false, hint: TEAM_DIR_DEFAULT_HINT });
+  try {
+    const r = await ts.dataRoot();
+    if (r && r.success && r.dataRoot) teamDirForm.path = r.dataRoot;
+  } catch { /* 读取失败就留空，用户可以手动浏览选择 */ }
+}
+
+function closeTeamDirDialog() {
+  if (teamDirForm.busy) return;
+  showTeamDirDialog.value = false;
+}
+
+async function browseTeamDir() {
+  const ts = teamServerApi();
+  if (!ts || !ts.chooseDataRoot || teamDirForm.busy) return;
+  try {
+    const r = await ts.chooseDataRoot();
+    if (r && r.success && r.path) {
+      teamDirForm.path = r.path;
+      Object.assign(teamDirForm, { ok: false, err: false, hint: TEAM_DIR_DEFAULT_HINT });
+    }
+  } catch { /* 用户取消或系统对话框调用失败 */ }
+}
+
+/* 确认：先落盘目录（server-embed 负责校验与迁移），成功后启动服务器；
+ * 启动失败时弹窗不关闭，把错误留在这里显示——否则 becomeHostAndConnect 的
+ * loginError 只在登录页可见，用户会以为点了没反应。 */
+async function confirmCreateTeam() {
+  const ts = teamServerApi();
+  if (!ts || !ts.setDataRoot || teamDirForm.busy) return;
+  teamDirForm.busy = true;
+  Object.assign(teamDirForm, { ok: false, err: false, hint: '' });
+  try {
+    let r = await ts.setDataRoot(teamDirForm.path);
+    /* 服务端已在运行（例如从创建管理员页返回后再次点「创建团队」）且目录要换：
+     * 先停机才能让配置与数据库指向同一处，再试一次。 */
+    if ((!r || !r.success) && r && r.code === 'running' && ts.stop) {
+      const stopped = await ts.stop();
+      if (stopped && stopped.success) r = await ts.setDataRoot(teamDirForm.path);
+    }
+    if (!r || !r.success) {
+      Object.assign(teamDirForm, { err: true, hint: (r && r.error) || '保存数据目录失败' });
+      return;
+    }
+    if (r.changed && Array.isArray(r.notes) && r.notes.length) {
+      Object.assign(teamDirForm, { ok: true, hint: r.notes.join('；') });
+    }
+    await becomeHostAndConnect();
+    if (serverReady.value) { showTeamDirDialog.value = false; return; }
+    Object.assign(teamDirForm, { err: true, hint: loginError.value || '启动团队服务器失败，请重试' });
+  } catch (e) {
+    Object.assign(teamDirForm, { err: true, hint: String(e.message || e) });
+  } finally {
+    teamDirForm.busy = false;
+  }
 }
 
 /* 一键「创建团队」：把本机启动为内嵌局域网主机，并自动把本机切到该服务器 */
@@ -2893,6 +3020,13 @@ const updateInfo = reactive({ version: '', currentVersion: '', releaseNotes: '' 
 const updateError = ref('');
 const updateErrorStage = ref('check');
 const downloadPercent = ref(0);
+
+/* 更新下载时内嵌询问「数据/数据库保存目录」：
+   仅在拿到新版本、尚未进入安装阶段时显示（available = 待下载，downloading = 正在下载） */
+const showDataDirPrompt = computed(() =>
+  updateVisible.value
+  && (updateStatus.value === 'available' || updateStatus.value === 'downloading')
+);
 const updateUnsubscribers = [];
 
 function applyUpdateState(data, show = true) {
