@@ -188,6 +188,10 @@
       </div>
     </div>
 
+    <!-- 弹窗统一 Teleport 到 body：.view 带有 transform（切页动效），会成为
+         position:fixed 的定位祖先，导致弹窗只覆盖内容区、随页面滚动且不居中。
+         挂到 body 后即可相对整个窗口始终居中。 -->
+    <Teleport to="body">
     <!-- 测试连接结果弹窗 -->
     <Transition name="modal-fade">
       <div v-if="showResultDialog" class="modal-overlay" @click.self="showResultDialog = false">
@@ -235,6 +239,7 @@
         </div>
       </div>
     </Transition>
+    </Teleport>
   </div>
 </template>
 
