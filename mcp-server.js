@@ -16,7 +16,7 @@
  * 数据目录发现顺序：
  *   1. --data-dir=<绝对路径> 或环境变量 SERIAL_PM_DATA_DIR
  *   2. --instance=<名称> → <候选目录>/instances/<名称>
- *   3. 候选目录：脚本同目录 data/（开发态）、%APPDATA%/Serial Protocol Manager/data、
+ *   3. 候选目录：脚本同目录 data/（开发态）、%APPDATA%/BaudLab/data、
  *      %APPDATA%/serial-protocol-manager/data；多实例时取 mcp-bridge.json 最新者
  *
  * 注意：stdout 是 MCP 协议通道，一切日志只写 stderr。
@@ -70,7 +70,7 @@ function candidateDataDirs(args) {
   /* 开发态：脚本在项目根 → <root>/data；打包态：脚本在 resources/mcp → 安装目录无 data，靠下面 APPDATA 候选 */
   bases.push(path.join(__dirname, 'data'));
   bases.push(path.join(__dirname, '..', '..', 'data'));
-  bases.push(path.join(os.homedir(), 'AppData', 'Roaming', 'Serial Protocol Manager', 'data'));
+  bases.push(path.join(os.homedir(), 'AppData', 'Roaming', 'BaudLab', 'data'));
   bases.push(path.join(os.homedir(), 'AppData', 'Roaming', 'serial-protocol-manager', 'data'));
 
   const instance = args['instance'] || process.env.SERIAL_PM_INSTANCE;

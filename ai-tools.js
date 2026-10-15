@@ -336,7 +336,7 @@ const TOOLS = {
       const list = ctx && ctx.app && typeof ctx.app.listSerialPorts === 'function'
         ? await ctx.app.listSerialPorts()
         : null;
-      if (!list) throw new Error('枚举串口需要 Serial Protocol Manager 桌面应用处于运行状态（当前为离线模式）');
+      if (!list) throw new Error('枚举串口需要 BaudLab 桌面应用处于运行状态（当前为离线模式）');
       return { count: list.length, ports: list };
     },
   },

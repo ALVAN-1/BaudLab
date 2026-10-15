@@ -28,8 +28,8 @@ class ReleaseError(RuntimeError):
 @dataclass(frozen=True)
 class Options:
     version: str
-    product_name: str = "Serial Protocol Manager"
-    artifact_prefix: str = "SerialProtocolManager"
+    product_name: str = "BaudLab"
+    artifact_prefix: str = "BaudLab"
     title: str = ""
     notes: str = ""
     owner: str = "ALVAN-1"
@@ -105,7 +105,7 @@ def sync_metadata(root, opts):
     build = package["build"]
     build["productName"] = opts.product_name
     # appId, npm package name and executableName retain the installed app identity.
-    build["win"].setdefault("executableName", "Serial Protocol Manager")
+    build["win"].setdefault("executableName", "BaudLab")
     build["nsis"]["artifactName"] = opts.artifact_prefix + "-Setup-${version}.${ext}"
     build["publish"] = {"provider": "github", "owner": opts.owner, "repo": opts.repo}
     lock = read_json(root / "package-lock.json")

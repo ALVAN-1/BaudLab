@@ -5,7 +5,7 @@
       <div class="app-logo">
         <img :src="iconUrl" alt="logo" style="width:100%;height:100%;border-radius:6px;" />
       </div>
-      <span class="app-name">Serial Protocol Manager</span>
+      <span class="app-name">BaudLab</span>
       <span class="app-version">v{{ appVersion }}</span>
       <!-- 数据源状态徽章：点击进入系统设置修改 -->
       <button class="titlebar-pill" :class="{ warn: offlineSession }" :title="serverPillTitle" @click="goToDbSettings">

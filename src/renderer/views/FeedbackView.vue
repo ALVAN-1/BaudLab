@@ -169,7 +169,7 @@ async function fallbackSubmit() {
     form.description,
     '',
     `---`,
-    `_由 Serial Protocol Manager 反馈功能自动生成_`,
+    `_由 BaudLab 反馈功能自动生成_`,
   ].join('\n');
 
   try {

@@ -29,7 +29,7 @@ ${C.orange}${C.bold}  ███████║███████╗██║ 
 ${C.orange}${C.bold}  ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═════╝  ╚═════╝  ╚══╝╚══╝  ╚═════╝ ${C.reset}
 ${C.darkGray}                                                                            ${C.reset}
 ${C.gray}  ╔══════════════════════════════════════════════════════════════════════════╗${C.reset}
-${C.gray}  ║${C.reset}  ${C.white}${C.bold}Serial Protocol Manager${C.reset}${C.gray} ${C.darkGray}v%s${C.reset}${C.gray}  ${C.darkGray}· %s${C.reset}${C.gray}                                              ║${C.reset}
+${C.gray}  ║${C.reset}  ${C.white}${C.bold}BaudLab${C.reset}${C.gray} ${C.darkGray}v%s${C.reset}${C.gray}  ${C.darkGray}· %s${C.reset}${C.gray}                                              ║${C.reset}
 ${C.gray}  ║${C.reset}  ${C.gold}串口协议管理工具${C.reset}${C.gray}                                                              ║${C.reset}
 ${C.gray}  ╚══════════════════════════════════════════════════════════════════════════╝${C.reset}
 `;

@@ -15,7 +15,7 @@
     "rebuild": "electron-rebuild",
     "test:updates": "node --test tests/update-controller.test.js"
   },
-  "author": "Serial Protocol Manager",
+  "author": "BaudLab",
   "license": "MIT",
   "devDependencies": {
     "@electron/rebuild": "^3.6.0",
@@ -69,7 +69,7 @@
         }
       ],
       "icon": "assets/app.ico",
-      "executableName": "Serial Protocol Manager"
+      "executableName": "BaudLab"
     },
     "nsis": {
       "oneClick": false,

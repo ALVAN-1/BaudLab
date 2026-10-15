@@ -304,7 +304,7 @@
       <div class="panel-header"><h3>关于</h3></div>
       <div class="panel-body">
         <div class="about-section">
-          <div class="about-row"><span class="about-label">应用名称</span><span class="about-value">Serial Protocol Manager</span></div>
+          <div class="about-row"><span class="about-label">应用名称</span><span class="about-value">BaudLab</span></div>
           <div class="about-row"><span class="about-label">版本</span><span class="about-value">v{{ appVersion }}</span></div>
           <div class="about-row"><span class="about-label">技术栈</span><span class="about-value">Electron + Vue 3 + better-sqlite3</span></div>
           <div class="about-row"><span class="about-label">仓库</span><a class="about-link" @click="openGithub">GitHub →</a></div>

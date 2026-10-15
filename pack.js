@@ -48,7 +48,7 @@ function pack() {
   copyDir(electronDist, outDir);
   /* 重命名 electron.exe 为应用名 */
   const oldExe = path.join(outDir, 'electron.exe');
-  const newExe = path.join(outDir, 'SerialProtocolManager.exe');
+  const newExe = path.join(outDir, 'BaudLab.exe');
   if (fs.existsSync(oldExe)) {
     fs.renameSync(oldExe, newExe);
   }

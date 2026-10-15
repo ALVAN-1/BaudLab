@@ -1,10 +1,10 @@
-; Serial Protocol Manager - Inno Setup 安装包脚本
+; BaudLab - Inno Setup 安装包脚本
 ; 使用 ISCC.exe 编译生成安装包
 
-#define MyAppName "Serial Protocol Manager"
+#define MyAppName "BaudLab"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "Serial Protocol Manager"
-#define MyAppExeName "SerialProtocolManager.exe"
+#define MyAppPublisher "BaudLab"
+#define MyAppExeName "BaudLab.exe"
 #define MyAppSourceDir "dist\win-unpacked"
 #define MyAppIcon "assets\app.ico"
 
@@ -17,7 +17,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=installer_output
-OutputBaseFilename=SerialProtocolManager-Setup-{#MyAppVersion}
+OutputBaseFilename=BaudLab-Setup-{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

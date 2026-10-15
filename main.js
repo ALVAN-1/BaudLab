@@ -374,7 +374,7 @@ function createTray() {
   }
 
   tray = new Tray(trayIcon);
-  tray.setToolTip(INSTANCE_NAME ? `Serial Protocol Manager · ${INSTANCE_NAME}` : 'Serial Protocol Manager');
+  tray.setToolTip(INSTANCE_NAME ? `BaudLab · ${INSTANCE_NAME}` : 'BaudLab');
 
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -1718,7 +1718,7 @@ ipcMain.handle('feedback:submit-issue', async (_e, { title, description, type, p
     description,
     '',
     `---`,
-    `_由 Serial Protocol Manager v${app.getVersion()} 自动提交_`,
+    `_由 BaudLab v${app.getVersion()} 自动提交_`,
     `_提交时间: ${new Date().toLocaleString('zh-CN')}_`,
   ].join('\n');
 

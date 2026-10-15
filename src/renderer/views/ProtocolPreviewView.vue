@@ -255,7 +255,7 @@
               </div>
 
               <div class="pdf-footer">
-                <p>Serial Protocol Manager · 文档生成于 {{ new Date().toLocaleString('zh-CN') }}</p>
+                <p>BaudLab · 文档生成于 {{ new Date().toLocaleString('zh-CN') }}</p>
               </div>
             </div>
           </div>
