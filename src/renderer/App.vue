@@ -34,7 +34,7 @@
   <!-- 用户选择弹窗 -->
   <Transition name="modal-fade">
     <div v-if="showLogin" class="login-overlay">
-      <div class="login-dialog">
+      <div class="login-dialog" :class="{ 'dialog-wide': chooserVisible }">
         <div class="login-header">
           <!-- 贪吃蛇 logo：蛇沿方波爬向白点并吃掉，无限循环（busy 加速，成功弹跳）
                动画在文件底部 <style> 块（Vue 编译）里定义，避免 SVG 内 <style> 被剥离 -->
@@ -65,7 +65,7 @@
               <circle class="s-dot" cx="912" cy="292" r="44" fill="#FFFFFF"/>
             </svg>
           </div>
-          <h2>Serial Protocol Manager</h2>
+          <FireworksGreeting />
           <p>{{ loginSubtitle }}</p>
         </div>
         <div class="login-body">
@@ -171,14 +171,8 @@
           </div>
 
           <!-- 使用方式引导：单机 / 加入团队 / 创建团队（启动无有效会话时先出此页） -->
-          <div v-else-if="showChooser" class="login-form">
+          <div v-else-if="chooserVisible" class="login-form">
             <div class="user-empty-state" style="padding:4px 0 10px;">
-              <div class="user-empty-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="4" width="20" height="16" rx="2"/>
-                  <path d="m2 7 10 6 10-6"/>
-                </svg>
-              </div>
               <div class="user-empty-title">选择使用方式</div>
               <div class="user-empty-desc" style="text-align:center;line-height:1.5;">
                 团队模式下协议、账号与审核数据由一台电脑统一提供，成员实时共享；<br>单机模式数据只保存在本机
@@ -187,18 +181,30 @@
 
             <div class="team-choice">
               <button v-if="serverReady && serverForm.url" type="button" class="team-choice-card continue" @click="continueConfiguredMode">
+                <span class="team-choice-icon" aria-hidden="true">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-monitor"/></svg>
+                </span>
                 <span class="team-choice-title">继续使用团队服务器</span>
                 <span class="team-choice-desc">{{ serverForm.url }}<template v-if="sessionState === 'unreachable'">（当前不可达）</template></span>
               </button>
               <button type="button" class="team-choice-card" :class="{ active: showJoinPanel }" @click="toggleJoinPanel">
+                <span class="team-choice-icon" aria-hidden="true">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-users"/></svg>
+                </span>
                 <span class="team-choice-title">加入团队</span>
                 <span class="team-choice-desc">扫描局域网或填写同事主机地址</span>
               </button>
               <button type="button" class="team-choice-card" :disabled="hostBusy || authBusy" @click="becomeHostAndConnect">
+                <span class="team-choice-icon" aria-hidden="true">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-plus"/></svg>
+                </span>
                 <span class="team-choice-title">{{ hostBusy ? '正在启动…' : '创建团队' }}</span>
                 <span class="team-choice-desc">把本机作为服务器，无需额外安装</span>
               </button>
               <button type="button" class="team-choice-card" @click="switchLoginView('local')">
+                <span class="team-choice-icon" aria-hidden="true">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><use href="#i-database"/></svg>
+                </span>
                 <span class="team-choice-title">单机使用</span>
                 <span class="team-choice-desc">不联网，数据保存在本机</span>
               </button>
@@ -1093,6 +1099,7 @@ import CustomBoardView from './views/CustomBoardView.vue';
 import ProtocolPreviewView from './views/ProtocolPreviewView.vue';
 import AiChatView from './views/AiChatView.vue';
 import McpGuideDialog from './components/McpGuideDialog.vue';
+import FireworksGreeting from './components/FireworksGreeting.vue';
 import iconUrl from './assets/icon.svg';
 
 const hasElectron = typeof window !== 'undefined' && typeof window.electronAPI !== 'undefined';
@@ -1132,6 +1139,11 @@ const canFirstAdmin = computed(() => !!firstAdminForm.email.trim() && firstAdmin
 /* 启动引导：无有效会话时先显示「选择使用方式」，已配置团队时顶部给「继续」快捷入口 */
 const chooseMode = ref(true);
 const showChooser = computed(() => !serverReady.value || chooseMode.value);
+/* 「选择使用方式」面板是否真正展示（模板分支优先级：不可达 > 本地身份 > 选择页），
+   用于把弹窗放宽以容纳一排模式卡片 */
+const chooserVisible = computed(() =>
+  sessionState.value !== 'unreachable' && loginView.value !== 'local' && showChooser.value
+);
 const loginForm = reactive({ email: '', password: '' });
 const showLoginPassword = ref(false);
 const rememberPassword = ref(false);

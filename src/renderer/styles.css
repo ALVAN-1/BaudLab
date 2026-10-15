@@ -5460,36 +5460,67 @@ body.dark .pwd-eye-btn:hover {
 }
 
 /* ===================== 首次使用：选择使用方式 ===================== */
+/* 每个模式一张卡片，横向排列（窄屏自动换行），鼠标悬浮时卡片放大上浮 */
 .team-choice {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
 }
 .team-choice-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  min-width: 0;
   text-align: left;
-  padding: 10px 12px;
+  padding: 14px 14px 16px;
   background: var(--bg-secondary, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--border-color, #2a3a5c);
   border-radius: var(--radius-md, 8px);
   cursor: pointer;
-  transition: border-color .15s, background .15s;
+  transform: translateY(0) scale(1);
+  transform-origin: center;
+  transition: transform .18s cubic-bezier(.2, .8, .3, 1),
+              border-color .15s, background .15s, box-shadow .18s;
+  will-change: transform;
 }
-.team-choice-card:hover:not(:disabled) {
+.team-choice-card:hover:not(:disabled),
+.team-choice-card:focus-visible {
+  transform: translateY(-3px) scale(1.05);
+  z-index: 2;
   border-color: var(--accent, #ff6a00);
   background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+  outline: none;
 }
 .team-choice-card.active { border-color: var(--accent, #ff6a00); }
-/* 已配置团队时的「继续使用」置顶卡片：强调为主操作 */
+/* 已配置团队时的「继续使用」卡片：强调为主操作 */
 .team-choice-card.continue {
   border-color: var(--accent, #ff6a00);
   background: color-mix(in srgb, var(--accent, #ff6a00) 12%, transparent);
 }
 .team-choice-card:disabled { opacity: .55; cursor: default; }
+.team-choice-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+  color: var(--accent, #ff6a00);
+  background: color-mix(in srgb, var(--accent, #ff6a00) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #ff6a00) 28%, transparent);
+  transition: background .15s;
+}
+.team-choice-card:hover:not(:disabled) .team-choice-icon {
+  background: color-mix(in srgb, var(--accent, #ff6a00) 20%, transparent);
+}
 .team-choice-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.team-choice-desc { font-size: 12px; color: var(--text-tertiary, #94a3b8); }
+.team-choice-desc { font-size: 12px; color: var(--text-tertiary, #94a3b8); line-height: 1.45; word-break: break-word; }
+
+/* 选择使用方式时把弹窗放宽，给一排卡片留出空间 */
+.login-dialog.dialog-wide { width: min(760px, calc(100vw - 48px)); }
+
 
 /* 登录页：局域网扫描列表 + 引导提示 */
 .login-scan { display: flex; flex-direction: column; gap: 6px; }
