@@ -7,6 +7,7 @@ from pathlib import Path
 import queue
 import shutil
 import threading
+import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 import webbrowser
@@ -111,6 +112,12 @@ class ReleaseApp:
         ttk.Label(bottom, textvariable=self.status).grid(row=1, column=0, columnspan=3, sticky="w", pady=(8, 4))
         self.progress = ttk.Progressbar(bottom, maximum=100)
         self.progress.grid(row=2, column=0, columnspan=3, sticky="ew")
+        # 进度条动画状态：目标值来自流水线阶段上报，显示值平滑逼近；
+        # 长时间没有新上报时切换为活动动画，避免看起来像卡死。
+        self.progress_target = 0.0
+        self.progress_value = 0.0
+        self.progress_stall_at = time.monotonic()
+        self.progress_indeterminate = False
         actions = ttk.Frame(bottom)
         actions.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(10, 0))
         self.button(actions, "仅打包", lambda: self.start("build")).pack(side="left")
@@ -119,8 +126,8 @@ class ReleaseApp:
         self.button(actions, "环境自检", self.selfcheck).pack(side="left", padx=8)
         self.button(actions, "打开产物目录", self.open_bundle).pack(side="right")
         self.button(actions, "查看 Release", self.open_release).pack(side="right", padx=8)
-        ttk.Label(page, text="发布会提交版本元数据、推送当前分支、创建 tag，并公开全部资产（客户端安装包 + latest.yml + 服务器部署包）。其他源码改动请先人工提交。构建条为阶段进度，上传条为实际字节进度。", wraplength=990).grid(row=6, column=0, sticky="w", pady=(10, 0))
-        window.after(100, self.poll)
+        ttk.Label(page, text="发布会提交版本元数据、推送当前分支、创建 tag，并公开全部资产（客户端安装包 + latest.yml + 服务器部署包）。其他源码改动请先人工提交。进度条按阶段推进：阶段跳变时平滑过渡，长时间无上报时显示活动动画；上传阶段为实际字节进度。", wraplength=990).grid(row=6, column=0, sticky="w", pady=(10, 0))
+        window.after(50, self.poll)
 
     def field(self, parent, key, label, value, row, col, **kwargs):
         ttk.Label(parent, text=label).grid(row=row, column=col, sticky="w", padx=(0, 8), pady=4)
@@ -182,6 +189,10 @@ class ReleaseApp:
             return
         self.busy = True
         self.release_url = ""
+        self.progress_target = 0.0
+        self.progress_value = 0.0
+        self.progress_stall_at = time.monotonic()
+        self.set_indeterminate(False)
         self.progress["value"] = 0
         for widget in self.controls:
             widget.configure(state="disabled")
@@ -231,6 +242,30 @@ class ReleaseApp:
         self.log.see("end")
         self.log.configure(state="disabled")
 
+    def set_indeterminate(self, enabled):
+        """切换进度条的“活动动画”状态（长时间没有阶段上报时使用）。"""
+        if enabled == self.progress_indeterminate:
+            return
+        self.progress_indeterminate = enabled
+        if enabled:
+            self.progress.configure(mode="indeterminate")
+            self.progress.start(22)
+        else:
+            self.progress.stop()
+            self.progress.configure(mode="determinate")
+            self.progress["value"] = self.progress_value
+
+    def animate_progress(self):
+        """让显示值平滑逼近阶段目标值；阶段长时间无上报则切换为活动动画，避免进度条看起来卡死。"""
+        if self.progress_value < self.progress_target:
+            step = max(0.15, (self.progress_target - self.progress_value) * 0.1)
+            self.progress_value = min(self.progress_target, self.progress_value + step)
+            if not self.progress_indeterminate:
+                self.progress["value"] = self.progress_value
+        if self.busy and self.progress_target < 100 and not self.progress_indeterminate:
+            if time.monotonic() - self.progress_stall_at > 1.2:
+                self.set_indeterminate(True)
+
     def poll(self):
         try:
             while True:
@@ -238,7 +273,10 @@ class ReleaseApp:
                 if event == "log":
                     self.append_log(data)
                 elif event == "progress":
-                    self.progress["value"], text = data
+                    value, text = data
+                    self.progress_target = float(value)
+                    self.progress_stall_at = time.monotonic()
+                    self.set_indeterminate(False)
                     self.status.set(text)
                 elif event == "status":
                     self.status.set(data)
@@ -246,21 +284,25 @@ class ReleaseApp:
                     self.bundle.set(data)
                 elif event in ("done", "error"):
                     self.busy = False
+                    self.set_indeterminate(False)
                     for widget in self.controls:
                         widget.configure(state="normal")
                     if event == "done":
                         bundle, self.release_url = data
                         self.bundle.set(bundle)
+                        self.progress_target = self.progress_value = 100.0
                         self.progress["value"] = 100
                         self.status.set("发布成功，客户端可检查更新。" if self.release_url else "打包成功；尚未推送或发布。")
                         self.append_log(self.release_url or bundle)
                     else:
+                        self.progress_target = self.progress_value
                         self.status.set("任务失败，详细信息见日志。")
                         self.append_log(data)
                         messagebox.showerror("任务失败", data + "\n\n已生成的产物与远程草稿会保留，可修复后重试。")
         except queue.Empty:
             pass
-        self.window.after(100, self.poll)
+        self.animate_progress()
+        self.window.after(50, self.poll)
 
     def open_bundle(self):
         directory = Path(self.bundle.get())
