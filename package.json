@@ -10,6 +10,7 @@
     "dev": "vite build && electron . --dev",
     "build:vue": "vite build",
     "build": "vite build && electron-builder --win nsis",
+    "build:art": "electron scripts/render-installer-art.js",
     "build:dir": "vite build && electron-builder --win dir",
     "rebuild": "electron-rebuild",
     "test:updates": "node --test tests/update-controller.test.js"
@@ -81,7 +82,9 @@
       "installerIcon": "assets/app.ico",
       "uninstallerIcon": "assets/app.ico",
       "installerHeader": "build/header.bmp",
-      "installerHeaderIcon": "assets/app.ico"
+      "installerHeaderIcon": "assets/app.ico",
+      "installerSidebar": "build/welcome.bmp",
+      "uninstallerSidebar": "build/welcome.bmp"
     },
     "publish": {
       "provider": "github",
