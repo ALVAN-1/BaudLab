@@ -5222,12 +5222,44 @@ tr[draggable='true']:active .field-drag-handle {
 }
 
 .login-header {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   padding: 32px 24px 16px;
   text-align: center;
+}
+
+/* 二级页（创建管理员账号）右上角返回按钮 */
+.login-back-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  line-height: 1;
+  color: var(--text-tertiary);
+  background: var(--bg-secondary, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+
+.login-back-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent, #ff6a00);
+  background: var(--bg-hover);
+}
+
+.login-back-btn:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--accent, #ff6a00);
+  outline: none;
 }
 
 .login-header h2 {

@@ -36,6 +36,20 @@
     <div v-if="showLogin" class="login-overlay">
       <div class="login-dialog" :class="{ 'dialog-wide': chooserVisible }">
         <div class="login-header">
+          <!-- 二级页（创建管理员账号）右上角返回：回到「选择使用方式」 -->
+          <button
+            v-if="needFirstAdmin"
+            type="button"
+            class="login-back-btn"
+            title="返回选择使用方式"
+            @click="backToChooser"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M19 12H5"/>
+              <path d="m12 19-7-7 7-7"/>
+            </svg>
+            <span>返回</span>
+          </button>
           <!-- 贪吃蛇 logo：蛇沿方波爬向白点并吃掉，无限循环（busy 加速，成功弹跳）
                动画在文件底部 <style> 块（Vue 编译）里定义，避免 SVG 内 <style> 被剥离 -->
           <div class="login-logo" :class="{ busy: authBusy, success: authSuccess }">
@@ -1774,6 +1788,18 @@ async function becomeHostAndConnect() {
   } finally {
     hostBusy.value = false;
   }
+}
+
+/* 「创建管理员账号」页右上角返回 → 回到「选择使用方式」页
+ * 成为主机后 serverReady=true，showChooser = !serverReady || chooseMode，
+ * 因此必须把 chooseMode 置回 true 才能重新展示选择页 */
+function backToChooser() {
+  needFirstAdmin.value = false;
+  firstAdminError.value = '';
+  loginError.value = '';
+  loginView.value = 'login';
+  showJoinPanel.value = false;
+  chooseMode.value = true;
 }
 
 async function createFirstAdmin() {
