@@ -1,5 +1,6 @@
 @echo off
 setlocal
+title BaudLab Release Tool
 cd /d "%~dp0"
 where py >nul 2>nul
 if not errorlevel 1 (

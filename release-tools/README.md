@@ -1,4 +1,4 @@
-# BaudLab 打包发布工具（release-tools）
+# BaudLab Release Tool（打包发布工具）
 
 本目录是客户端的**一键打包 + GitHub 发布**工具，以及发布产物归档目录。
 产物（`output/`）、临时构建目录（`.work/`）和本机设置（`local-settings.json`）

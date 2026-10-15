@@ -1,4 +1,4 @@
-"""BaudLab desktop release tool. Python 3.10+ with Tkinter; standard library only."""
+"""BaudLab Release Tool. Python 3.10+ with Tkinter; standard library only."""
 from __future__ import annotations
 
 import json
@@ -25,9 +25,9 @@ class ReleaseApp:
         self.release_url = ""
         self.controls = []
         self.vars = {}
-        window.title("BaudLab · 打包与 GitHub 发布")
-        window.geometry("1040x820")
-        window.minsize(920, 720)
+        window.title("BaudLab Release Tool")
+        window.geometry("1040x860")
+        window.minsize(920, 760)
         window.protocol("WM_DELETE_WINDOW", self.close)
         style = ttk.Style()
         if "vista" in style.theme_names():
@@ -53,11 +53,17 @@ class ReleaseApp:
                 self.remember.set(True)
         except (OSError, ValueError):
             pass
+        # ---- 顶部标题栏 ----
+        header = tk.Frame(window, bg="#20242e")
+        header.pack(fill="x", side="top")
+        tk.Label(header, text="BaudLab Release Tool", bg="#20242e", fg="#ffffff",
+                 font=("Segoe UI", 15, "bold")).pack(side="left", padx=(18, 14), pady=12)
+        tk.Label(header, text="客户端安装包 + 服务器部署包 + GitHub Release", bg="#20242e",
+                 fg="#9aa4b2", font=("Microsoft YaHei UI", 9)).pack(side="left", pady=(15, 12))
         page = ttk.Frame(window, padding=16)
         page.pack(fill="both", expand=True)
         page.columnconfigure(0, weight=1)
         page.rowconfigure(4, weight=1)
-        ttk.Label(page, text="客户端安装包 + 服务器部署包 + GitHub Release", font=("Microsoft YaHei UI", 16, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 12))
         meta = ttk.LabelFrame(page, text="版本与名称", padding=10)
         meta.grid(row=1, column=0, sticky="ew")
         for col in (1, 3):
