@@ -82,8 +82,13 @@
               <div class="user-empty-title">无法连接团队服务器</div>
               <div class="user-empty-desc" style="text-align:center;line-height:1.5;">{{ sessionError }}</div>
             </div>
+            <p class="login-server-hint">
+              可能原因：主机电脑未开机或未启动服务器，也可能是地址/访问令牌有误。<br>
+              若这是你的第一台设备，可把本机直接设为团队服务器。
+            </p>
             <div class="login-form-actions">
               <button class="btn btn-secondary" :disabled="authBusy" @click="retrySession">{{ authBusy ? '重试中…' : '重试' }}</button>
+              <button class="btn btn-secondary" :disabled="hostBusy || authBusy" @click="becomeHostAndConnect">{{ hostBusy ? '启动中…' : '把本机设为团队服务器' }}</button>
               <button class="btn btn-primary login-confirm-btn" :disabled="authBusy" @click="enterLocalMode">{{ authBusy ? '进入中…' : '进入本地模式' }}</button>
             </div>
           </div>
@@ -165,35 +170,109 @@
             </template>
           </div>
 
-          <!-- 未配置团队服务器：邮箱登录依赖服务器发送验证码 -->
+          <!-- 首次使用引导：单机 / 加入团队 / 创建团队 -->
           <div v-else-if="!serverReady" class="login-form">
-            <div class="user-empty-state" style="padding:6px 0 14px;">
+            <div class="user-empty-state" style="padding:4px 0 10px;">
               <div class="user-empty-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="2" y="4" width="20" height="16" rx="2"/>
                   <path d="m2 7 10 6 10-6"/>
                 </svg>
               </div>
-              <div class="user-empty-title">邮箱登录需要团队服务器</div>
-              <div class="user-empty-desc" style="text-align:center;line-height:1.5;">注册与登录的邮箱验证码由团队服务器发送<br>请先连接服务器</div>
+              <div class="user-empty-title">选择使用方式</div>
+              <div class="user-empty-desc" style="text-align:center;line-height:1.5;">
+                团队模式下协议、账号与审核数据由一台电脑统一提供，成员实时共享；<br>单机模式数据只保存在本机
+              </div>
             </div>
-            <div class="login-form-row">
-              <label class="login-form-label">服务器地址 <span class="login-required">*</span></label>
-              <input type="text" class="input login-form-input" v-model="serverForm.url" placeholder="http://192.168.x.x:3010" @keyup.enter="doConnectServer" />
-            </div>
-            <div class="login-form-row">
-              <label class="login-form-label">访问令牌</label>
-              <input type="password" class="input login-form-input" v-model="serverForm.token" placeholder="服务器配置了 token 时填写" @keyup.enter="doConnectServer" />
-            </div>
-            <span v-if="loginError" class="login-error">{{ loginError }}</span>
-            <div class="login-form-actions">
-              <button class="btn btn-secondary" :disabled="authBusy" @click="retrySession">重新检测</button>
-              <button class="btn btn-primary login-confirm-btn" :disabled="!serverForm.url || authBusy" @click="doConnectServer">
-                {{ authBusy ? '连接中…' : '连接并继续' }}
+
+            <div class="team-choice">
+              <button type="button" class="team-choice-card" :class="{ active: showJoinPanel }" @click="toggleJoinPanel">
+                <span class="team-choice-title">加入团队</span>
+                <span class="team-choice-desc">扫描局域网或填写同事主机地址</span>
+              </button>
+              <button type="button" class="team-choice-card" :disabled="hostBusy || authBusy" @click="becomeHostAndConnect">
+                <span class="team-choice-title">{{ hostBusy ? '正在启动…' : '创建团队' }}</span>
+                <span class="team-choice-desc">把本机作为服务器，无需额外安装</span>
+              </button>
+              <button type="button" class="team-choice-card" @click="switchLoginView('local')">
+                <span class="team-choice-title">单机使用</span>
+                <span class="team-choice-desc">不联网，数据保存在本机</span>
               </button>
             </div>
-            <div class="login-links">
-              <button type="button" class="login-link-btn" @click="switchLoginView('local')">使用本地模式（无需服务器）</button>
+
+            <template v-if="showJoinPanel">
+              <div class="login-scan">
+                <div class="login-scan-head">
+                  <span>局域网发现的服务器</span>
+                  <button type="button" class="btn-link" @click="toggleLoginScan">
+                    {{ loginScanning ? '停止扫描' : '扫描' }}
+                  </button>
+                </div>
+                <div v-if="loginScanList.length === 0" class="login-scan-empty">
+                  {{ loginScanning ? '搜索中…' : '未发现服务器，可手动填写地址' }}
+                </div>
+                <ul v-else class="login-scan-list">
+                  <li
+                    v-for="d in loginScanList"
+                    :key="d.url"
+                    :class="{ active: serverForm.url === d.url }"
+                    @click="applyLoginServer(d)"
+                  >
+                    <span class="login-scan-name">{{ d.name }}</span>
+                    <span class="login-scan-url">{{ d.url }}</span>
+                  </li>
+                </ul>
+              </div>
+              <div class="login-form-row">
+                <label class="login-form-label">服务器地址 <span class="login-required">*</span></label>
+                <input type="text" class="input login-form-input" v-model="serverForm.url" placeholder="http://192.168.x.x:3010" @keyup.enter="doConnectServer" />
+              </div>
+              <div class="login-form-row">
+                <label class="login-form-label">访问令牌</label>
+                <input type="password" class="input login-form-input" v-model="serverForm.token" placeholder="主机提供的访问令牌" @keyup.enter="doConnectServer" />
+              </div>
+              <span v-if="loginError" class="login-error">{{ loginError }}</span>
+              <div class="login-form-actions">
+                <button class="btn btn-secondary" :disabled="authBusy" @click="retrySession">重新检测</button>
+                <button class="btn btn-primary login-confirm-btn" :disabled="!serverForm.url || authBusy" @click="doConnectServer">
+                  {{ authBusy ? '连接中…' : '连接并继续' }}
+                </button>
+              </div>
+            </template>
+          </div>
+
+          <!-- 首个管理员：本机作为主机后可直接免邮箱创建，无需配置 SMTP -->
+          <div v-else-if="needFirstAdmin" class="login-form">
+            <div class="user-empty-state" style="padding:4px 0 10px;">
+              <div class="user-empty-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+              </div>
+              <div class="user-empty-title">创建管理员账号</div>
+              <div class="user-empty-desc" style="text-align:center;line-height:1.5;">
+                服务器已在本机启动，先创建一个管理员账号即可开始使用，<br>无需配置邮件发信
+              </div>
+            </div>
+            <div class="login-form-row">
+              <label class="login-form-label">管理员邮箱 <span class="login-required">*</span></label>
+              <input type="email" class="input login-form-input" v-model="firstAdminForm.email" placeholder="name@company.com" @keyup.enter="createFirstAdmin" />
+            </div>
+            <div class="login-form-row">
+              <label class="login-form-label">登录密码 <span class="login-required">*</span></label>
+              <input type="password" class="input login-form-input" v-model="firstAdminForm.password" placeholder="至少 8 位" @keyup.enter="createFirstAdmin" />
+            </div>
+            <div class="login-form-row">
+              <label class="login-form-label">显示名</label>
+              <input type="text" class="input login-form-input" v-model="firstAdminForm.displayName" placeholder="审核与通知中显示的姓名（选填）" @keyup.enter="createFirstAdmin" />
+            </div>
+            <span v-if="firstAdminError" class="login-error">{{ firstAdminError }}</span>
+            <div class="login-form-actions">
+              <button class="btn btn-secondary" @click="needFirstAdmin = false">返回登录</button>
+              <button class="btn btn-primary login-confirm-btn" :disabled="!canFirstAdmin || firstAdminBusy" @click="createFirstAdmin">
+                {{ firstAdminBusy ? '创建中…' : '创建账号' }}
+              </button>
             </div>
           </div>
 
@@ -755,12 +834,13 @@
                 </div>
               </div>
               <p style="color:var(--text-secondary);line-height:1.6;font-size:13px;margin-top:12px;">
-                可以重试连接，或使用本机 SQLite 备份数据继续工作（仅本次会话生效）。<br>
-                之后可在「系统设置 → 数据库连接」重新开启团队服务器。
+                可以重试连接、使用本机 SQLite 备份数据继续工作（仅本次会话生效），<br>
+                也可以把本机直接设为团队服务器，无需额外安装。
               </p>
             </div>
             <div class="modal-footer">
               <button class="btn btn-secondary" :disabled="fallbackChecking" @click="retryFallbackCheck">{{ fallbackChecking ? '正在重试...' : '重试连接' }}</button>
+              <button class="btn btn-secondary" :disabled="fallbackChecking" @click="becomeHostFromFallback">把本机设为团队服务器</button>
               <button class="btn btn-primary" @click="useLocalBackup">使用本地备份</button>
             </div>
           </div>
@@ -1032,6 +1112,19 @@ const serverReady = ref(true);
 const serverForm = reactive({ url: '', token: '' });
 const sessionState = ref('none'); // none | unreachable
 const sessionError = ref('');
+
+/* 首次使用引导：加入团队（扫描）/ 一键成为主机 */
+const showJoinPanel = ref(false);
+const hostBusy = ref(false);
+const loginScanList = ref([]);
+const loginScanning = ref(false);
+let offLoginScan = null;
+/* 首个管理员创建（本机作为主机时免邮箱，无需配置 SMTP） */
+const needFirstAdmin = ref(false);
+const firstAdminForm = reactive({ email: '', password: '', displayName: '' });
+const firstAdminBusy = ref(false);
+const firstAdminError = ref('');
+const canFirstAdmin = computed(() => !!firstAdminForm.email.trim() && firstAdminForm.password.length >= 8);
 const loginForm = reactive({ email: '', password: '' });
 const showLoginPassword = ref(false);
 const rememberPassword = ref(false);
@@ -1421,6 +1514,7 @@ function switchLoginView(view) {
     sessionState.value = 'none';
     localAddMode.value = false;
     loadLocalUsers();
+    stopLoginScan();
   }
 }
 
@@ -1577,6 +1671,104 @@ async function doConnectServer() {
   }
   authBusy.value = false;
 }
+
+/* ---- 首次使用引导：加入团队（扫描）/ 一键成为主机 / 首个管理员 ---- */
+function toggleJoinPanel() {
+  showJoinPanel.value = !showJoinPanel.value;
+  if (showJoinPanel.value) startLoginScan();
+  else stopLoginScan();
+}
+
+async function startLoginScan() {
+  const disc = hasElectron && window.electronAPI && window.electronAPI.discovery;
+  if (!disc) return;
+  if (!offLoginScan) {
+    offLoginScan = disc.onUpdate((list) => { loginScanList.value = list || []; });
+  }
+  const res = await disc.start();
+  loginScanList.value = (res && res.list) || [];
+  loginScanning.value = true;
+}
+
+async function stopLoginScan() {
+  const disc = hasElectron && window.electronAPI && window.electronAPI.discovery;
+  if (disc) await disc.stop();
+  loginScanning.value = false;
+}
+
+async function toggleLoginScan() {
+  if (loginScanning.value) await stopLoginScan();
+  else await startLoginScan();
+}
+
+function applyLoginServer(d) {
+  serverForm.url = d.url || '';
+}
+
+/* 一键「创建团队」：把本机启动为内嵌局域网主机，并自动把本机切到该服务器 */
+async function becomeHostAndConnect() {
+  if (hostBusy.value || authBusy.value) return;
+  const ts = hasElectron && window.electronAPI && window.electronAPI.teamServer;
+  if (!ts) { loginError.value = '当前环境不支持内嵌服务器'; return; }
+  hostBusy.value = true;
+  loginError.value = '';
+  try {
+    const res = await ts.start({});
+    if (!res || !res.success) {
+      loginError.value = (res && res.error) || '启动局域网主机失败';
+      return;
+    }
+    const url = res.url || `http://localhost:${res.port}`;
+    serverForm.url = url;
+    serverForm.token = res.token || '';
+    await window.electronAPI.dbConfig.set({ mode: 'remote', url, token: res.token || '' });
+    serverReady.value = true;
+    sessionState.value = 'none';
+    await initLogin();
+    if (!showLogin.value) { showFallbackDialog.value = false; startupReady.value = true; }
+    /* 本机作为主机：若还没有可登录管理员，引导直接创建（免邮箱） */
+    if (ts.admin) {
+      const list = await ts.admin.listUsers();
+      if (list && list.success && (list.loginableAdmins || 0) === 0) {
+        needFirstAdmin.value = true;
+      }
+    }
+  } catch (e) {
+    loginError.value = '启动失败：' + (e.message || e);
+  } finally {
+    hostBusy.value = false;
+  }
+}
+
+async function createFirstAdmin() {
+  if (!canFirstAdmin.value || firstAdminBusy.value) return;
+  const admin = hasElectron && window.electronAPI.teamServer && window.electronAPI.teamServer.admin;
+  if (!admin) { firstAdminError.value = '当前环境不支持'; return; }
+  firstAdminBusy.value = true;
+  firstAdminError.value = '';
+  try {
+    const r = await admin.createUser({
+      email: firstAdminForm.email.trim(),
+      password: firstAdminForm.password,
+      displayName: firstAdminForm.displayName.trim(),
+      role: '管理员',
+    });
+    if (r && r.success) {
+      needFirstAdmin.value = false;
+      loginForm.email = firstAdminForm.email.trim();
+      loginForm.password = '';
+      loginNotice.value = '管理员账号已创建，请输入密码登录';
+      loginView.value = 'login';
+    } else {
+      firstAdminError.value = (r && r.error) || '创建失败';
+    }
+  } catch (e) {
+    firstAdminError.value = e.message || String(e);
+  } finally {
+    firstAdminBusy.value = false;
+  }
+}
+
 /* 修改密码 */
 async function doChangePassword() {
   if (!canChangePassword.value || changePwdBusy.value) return;
@@ -1790,6 +1982,27 @@ async function useLocalBackup() {
   }
   showFallbackDialog.value = false;
   startupReady.value = true;
+}
+
+/** 启动回退弹窗：改把本机作为团队服务器（启动内嵌服务器并切到它，整页刷新） */
+async function becomeHostFromFallback() {
+  const ts = hasElectron && window.electronAPI && window.electronAPI.teamServer;
+  if (!ts) { fallbackError.value = '当前环境不支持内嵌服务器'; return; }
+  fallbackChecking.value = true;
+  try {
+    const res = await ts.start({});
+    if (!res || !res.success) {
+      fallbackError.value = (res && res.error) || '启动局域网主机失败';
+      return;
+    }
+    const url = res.url || `http://localhost:${res.port}`;
+    await window.electronAPI.dbConfig.set({ mode: 'remote', url, token: res.token || '' });
+    window.location.reload();
+  } catch (e) {
+    fallbackError.value = '启动失败：' + (e.message || e);
+  } finally {
+    fallbackChecking.value = false;
+  }
 }
 
 /** 启动提醒弹窗：用户确认本地修改已合并/留档，清除标记不再提醒 */
@@ -2240,6 +2453,7 @@ onMounted(() => {
 });
 onUnmounted(() => {
   window.removeEventListener('spm-switch-view', onSpmSwitchView);
+  if (offLoginScan) { offLoginScan(); offLoginScan = null; }
 });
 
 /* ===================== 系统通知 ===================== */

@@ -177,6 +177,42 @@
               <button class="btn btn-secondary" @click="openHostAdmin">打开管理后台</button>
               <button class="btn btn-secondary" @click="stopHost">停止服务器</button>
             </div>
+
+            <!-- 成员账号：复用服务器本机管理接口，免邮箱验证直建账号，无需配置 SMTP -->
+            <div class="db-host-members">
+              <div class="db-host-members-head">
+                <span>成员账号（免邮箱验证）</span>
+                <button type="button" class="btn-link" :disabled="membersLoading" @click="loadMembers">
+                  {{ membersLoading ? '加载中…' : '刷新' }}
+                </button>
+              </div>
+              <p class="db-mode-hint">
+                在这里直接创建账号，成员用「邮箱 + 密码」即可登录，无需配置邮件发信。
+                <strong v-if="membersLoaded && !hasAdmin">当前还没有可登录的管理员，建议先创建一个「管理员」账号。</strong>
+              </p>
+              <p v-if="membersError" class="db-host-error">{{ membersError }}</p>
+              <div class="db-member-form">
+                <input class="input" v-model="memberForm.email" placeholder="成员邮箱" spellcheck="false" @keyup.enter="createMember">
+                <input class="input" type="password" v-model="memberForm.password" placeholder="初始密码（至少 8 位）" @keyup.enter="createMember">
+                <input class="input" v-model="memberForm.displayName" placeholder="显示名（选填）" @keyup.enter="createMember">
+                <select class="input" v-model="memberForm.role">
+                  <option value="工程师">工程师</option>
+                  <option value="管理员">管理员</option>
+                </select>
+                <button class="btn btn-primary" :disabled="memberCreating || !canCreateMember" @click="createMember">
+                  {{ memberCreating ? '创建中…' : '创建账号' }}
+                </button>
+              </div>
+              <ul v-if="members.length" class="db-member-list">
+                <li v-for="m in members" :key="m.id">
+                  <span class="db-member-email">{{ m.email || m.username }}</span>
+                  <span class="db-member-role">{{ m.role_name || '—' }}</span>
+                  <span :class="['db-member-status', m.status === 'active' ? 'ok' : 'off']">{{ m.status === 'active' ? '启用' : '停用' }}</span>
+                  <button type="button" class="btn btn-secondary btn-mini" @click="deleteMember(m)">删除</button>
+                </li>
+              </ul>
+              <p v-else-if="membersLoaded" class="db-mode-hint">暂无成员账号</p>
+            </div>
           </template>
 
           <!-- 运行日志（最近若干行，便于排查） -->
@@ -215,6 +251,37 @@
       </div>
     </Transition>
 
+    <!-- 团队服务器连不上：引导而非静默保存 -->
+    <Transition name="modal-fade">
+      <div v-if="showRemoteWarn" class="modal-overlay" @click.self="showRemoteWarn = false">
+        <div class="modal-dialog" style="max-width:460px;">
+          <div class="modal-header">
+            <h3>未连接到团队服务器</h3>
+          </div>
+          <div class="modal-body">
+            <div class="db-result-content">
+              <div class="db-result-icon error">
+                <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+              </div>
+              <div class="db-result-message">
+                <p style="font-weight:600;word-break:break-all;">{{ remoteWarnUrl }}</p>
+                <p style="color:var(--text-tertiary);font-size:12.5px;">{{ remoteWarnMsg }}</p>
+              </div>
+            </div>
+            <p style="color:var(--text-secondary);line-height:1.6;font-size:13px;margin-top:12px;">
+              可能原因：主机电脑未开机、未启动服务器，或地址/令牌有误。<br>
+              你可以把本机直接作为团队服务器，或仍然保存稍后再试。
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="showRemoteWarn = false">取消</button>
+            <button class="btn btn-secondary" :disabled="saving" @click="saveRemoteAnyway">仍然保存</button>
+            <button class="btn btn-primary" :disabled="saving" @click="hostFromWarn">把本机作为服务器</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- 数据源切换成功弹窗 -->
     <Transition name="modal-fade">
       <div v-if="showReloadDialog" class="modal-overlay">
@@ -244,7 +311,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useDatabase } from '../composables/useDatabase';
 
 const hasElectron = typeof window !== 'undefined' && typeof window.electronAPI !== 'undefined';
@@ -272,6 +339,12 @@ const resultIsError = ref(false);
 const resultMessage = ref('');
 const showReloadDialog = ref(false);
 
+/* 保存团队模式前测连通失败：引导用户（本机作为主机 / 仍然保存 / 取消） */
+const showRemoteWarn = ref(false);
+const remoteWarnMsg = ref('');
+const remoteWarnUrl = ref('');
+const remoteWarnToken = ref('');
+
 // --- 局域网主机（内嵌服务器）+ mDNS 零配置发现 ---
 const host = ref({
   running: false, starting: false, port: null,
@@ -284,6 +357,17 @@ const selfConnectedToHost = ref(false);
 let offHostState = null;
 let offHostLog = null;
 let offDiscovery = null;
+
+// --- 成员账号（复用内嵌服务器本机管理接口，免邮箱验证） ---
+const members = ref([]);
+const membersLoading = ref(false);
+const membersLoaded = ref(false);
+const membersError = ref('');
+const memberCreating = ref(false);
+const hasAdmin = ref(false);
+const memberForm = ref({ email: '', password: '', displayName: '', role: '工程师' });
+const canCreateMember = computed(() =>
+  !!memberForm.value.email.trim() && memberForm.value.password.length >= 8);
 
 function applyHostState(s) {
   if (!s) return;
@@ -331,6 +415,68 @@ async function onRegenToken() {
 async function openHostAdmin() {
   if (!hasElectron || !window.electronAPI.teamServer) return;
   await window.electronAPI.teamServer.openAdmin();
+}
+
+/* ---- 成员账号：直连内嵌服务器本机管理接口（免邮箱验证） ---- */
+function adminApi() {
+  return hasElectron && window.electronAPI.teamServer && window.electronAPI.teamServer.admin;
+}
+
+async function loadMembers() {
+  const api = adminApi();
+  if (!api) return;
+  membersLoading.value = true;
+  membersError.value = '';
+  try {
+    const res = await api.listUsers();
+    if (res && res.success) {
+      members.value = res.rows || [];
+      hasAdmin.value = (res.loginableAdmins || 0) > 0;
+      membersLoaded.value = true;
+      if (!hasAdmin.value) memberForm.value.role = '管理员';
+    } else {
+      membersError.value = (res && res.error) || '加载成员失败';
+    }
+  } catch (e) {
+    membersError.value = e.message || String(e);
+  } finally {
+    membersLoading.value = false;
+  }
+}
+
+async function createMember() {
+  const api = adminApi();
+  if (!api || !canCreateMember.value || memberCreating.value) return;
+  memberCreating.value = true;
+  membersError.value = '';
+  try {
+    const res = await api.createUser({
+      email: memberForm.value.email.trim(),
+      password: memberForm.value.password,
+      displayName: memberForm.value.displayName.trim(),
+      role: memberForm.value.role,
+    });
+    if (res && res.success) {
+      memberForm.value = { email: '', password: '', displayName: '', role: hasAdmin.value ? '工程师' : '管理员' };
+      await loadMembers();
+    } else {
+      membersError.value = (res && res.error) || '创建失败';
+    }
+  } catch (e) {
+    membersError.value = e.message || String(e);
+  } finally {
+    memberCreating.value = false;
+  }
+}
+
+async function deleteMember(m) {
+  const api = adminApi();
+  if (!api) return;
+  const name = m.email || m.username;
+  if (!window.confirm(`确定删除成员「${name}」？该操作不可恢复。`)) return;
+  const res = await api.deleteUser({ id: m.id });
+  if (res && res.success) await loadMembers();
+  else membersError.value = (res && res.error) || '删除失败';
 }
 
 /** 让本机客户端也连到它刚启动的服务器（写入连接配置，需刷新生效） */
@@ -421,27 +567,73 @@ async function refreshStats() {
 }
 
 async function saveConfig() {
-  const cfg = {
-    mode: dbMode.value,
-    url: serverUrl.value.trim(),
-    token: serverToken.value.trim(),
-  };
+  if (!hasElectron) {
+    resultIsError.value = true;
+    resultMessage.value = '保存失败: 当前环境不支持';
+    showResultDialog.value = true;
+    return;
+  }
+  const url = serverUrl.value.trim();
+  const token = serverToken.value.trim();
   saving.value = true;
   try {
-    if (!hasElectron) {
+    /* 团队模式先测连通：连不上不静默保存，改为给出引导
+       （否则会在刷新后于登录/启动阶段报"连不上服务器"，令人困惑） */
+    if (dbMode.value === 'remote' && url) {
+      const test = await window.electronAPI.dbConfig.test({ url, token, timeoutMs: 3500 });
+      if (!test.success) {
+        remoteWarnMsg.value = test.error || '连接失败，请检查地址与令牌';
+        remoteWarnUrl.value = url;
+        remoteWarnToken.value = token;
+        showRemoteWarn.value = true;
+        return;
+      }
+    }
+    await persistConfig({ mode: dbMode.value, url, token });
+  } finally {
+    saving.value = false;
+  }
+}
+
+/** 落盘数据源配置（保存成功弹「已切换」提示） */
+async function persistConfig(cfg) {
+  const res = await window.electronAPI.dbConfig.set(cfg);
+  if (res.success) {
+    showReloadDialog.value = true;
+  } else {
+    resultIsError.value = true;
+    resultMessage.value = `保存失败: ${res.error}`;
+    showResultDialog.value = true;
+  }
+}
+
+/* 连不上仍要保存：按用户意愿落盘，启动时有回退弹窗兜底 */
+async function saveRemoteAnyway() {
+  showRemoteWarn.value = false;
+  saving.value = true;
+  try {
+    await persistConfig({ mode: 'remote', url: remoteWarnUrl.value, token: remoteWarnToken.value });
+  } finally {
+    saving.value = false;
+  }
+}
+
+/* 连不上时改把本机作为主机：启动内嵌服务器并连接它 */
+async function hostFromWarn() {
+  showRemoteWarn.value = false;
+  saving.value = true;
+  try {
+    const res = await window.electronAPI.teamServer.start({});
+    if (!res || !res.success) {
       resultIsError.value = true;
-      resultMessage.value = '保存失败: 当前环境不支持';
+      resultMessage.value = (res && res.error) || '启动局域网主机失败';
       showResultDialog.value = true;
       return;
     }
-    const res = await window.electronAPI.dbConfig.set(cfg);
-    if (res.success) {
-      showReloadDialog.value = true;
-    } else {
-      resultIsError.value = true;
-      resultMessage.value = `保存失败: ${res.error}`;
-      showResultDialog.value = true;
-    }
+    dbMode.value = 'remote';
+    serverUrl.value = res.url || `http://localhost:${res.port}`;
+    serverToken.value = res.token || '';
+    await persistConfig({ mode: 'remote', url: serverUrl.value, token: serverToken.value });
   } finally {
     saving.value = false;
   }
@@ -506,6 +698,12 @@ onMounted(async () => {
     offHostState = window.electronAPI.teamServer.onState(applyHostState);
     offHostLog = window.electronAPI.teamServer.onLog(({ line }) => {
       hostLogs.value = [...hostLogs.value, line].slice(-100);
+    });
+    /* 主机运行中（含自动恢复启动）时加载成员账号 */
+    if (host.value.running) loadMembers();
+    watch(() => host.value.running, (running) => {
+      if (running) loadMembers();
+      else { members.value = []; membersLoaded.value = false; }
     });
   }
   if (hasElectron && window.electronAPI.discovery) {
@@ -611,6 +809,54 @@ onUnmounted(() => {
   border-radius: var(--radius-sm, 6px);
 }
 .btn-mini { padding: 4px 10px; font-size: 12px; }
+
+/* 成员账号（免邮箱验证直建） */
+.db-host-members {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-color);
+}
+.db-host-members-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.db-member-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+.db-member-form .btn { white-space: nowrap; }
+.db-member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow: auto;
+}
+.db-member-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-primary, rgba(0, 0, 0, 0.12));
+}
+.db-member-email { flex: 1; min-width: 0; color: var(--text-primary); word-break: break-all; }
+.db-member-role { color: var(--text-secondary); }
+.db-member-status { font-size: 11px; }
+.db-member-status.ok { color: #22c55e; }
+.db-member-status.off { color: #ef4444; }
 
 /* 局域网发现的服务器列表 */
 .db-discover {

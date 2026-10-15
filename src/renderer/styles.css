@@ -5459,6 +5459,65 @@ body.dark .pwd-eye-btn:hover {
   font-size: 12px;
 }
 
+/* ===================== 首次使用：选择使用方式 ===================== */
+.team-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-choice-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 10px 12px;
+  background: var(--bg-secondary, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border-color, #2a3a5c);
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.team-choice-card:hover:not(:disabled) {
+  border-color: var(--accent, #ff6a00);
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
+}
+.team-choice-card.active { border-color: var(--accent, #ff6a00); }
+.team-choice-card:disabled { opacity: .55; cursor: default; }
+.team-choice-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.team-choice-desc { font-size: 12px; color: var(--text-tertiary, #94a3b8); }
+
+/* 登录页：局域网扫描列表 + 引导提示 */
+.login-scan { display: flex; flex-direction: column; gap: 6px; }
+.login-scan-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--text-secondary);
+}
+.login-scan-empty { font-size: 12px; color: var(--text-tertiary); padding: 4px 2px; }
+.login-scan-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 132px; overflow: auto;
+}
+.login-scan-list li {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 6px 10px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--border-color, #2a3a5c);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-primary, rgba(0, 0, 0, 0.12));
+}
+.login-scan-list li:hover, .login-scan-list li.active { border-color: var(--accent, #ff6a00); }
+.login-scan-name { color: var(--text-primary); }
+.login-scan-url { color: var(--text-secondary); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.login-server-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-tertiary, #94a3b8);
+}
+
+/* 登录弹窗内容过高时可滚动（首次引导、成员较多等） */
+.login-dialog { max-height: calc(100vh - 90px); overflow-y: auto; }
+
 /* 重置成功等绿色提示 */
 .login-notice {
   font-size: 12px;

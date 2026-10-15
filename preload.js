@@ -272,6 +272,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('team-server:log', handler);
       return () => ipcRenderer.removeListener('team-server:log', handler);
     },
+    // 本机管理接口：在客户端内直接管理团队成员账号（免邮箱验证）
+    admin: {
+      listUsers: () => ipcRenderer.invoke('team-server:admin-users'),
+      createUser: (payload) => ipcRenderer.invoke('team-server:admin-create-user', payload),
+      setUserRole: (payload) => ipcRenderer.invoke('team-server:admin-set-role', payload),
+      setUserStatus: (payload) => ipcRenderer.invoke('team-server:admin-set-status', payload),
+      deleteUser: (payload) => ipcRenderer.invoke('team-server:admin-delete-user', payload),
+    },
   },
 
   // --- 局域网零配置发现（mDNS） ---

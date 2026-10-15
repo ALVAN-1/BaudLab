@@ -1331,6 +1331,41 @@ ipcMain.handle('team-server:open-admin', () => {
   return { success: true };
 });
 
+/**
+ * 转发内嵌服务器的本机管理接口（/admin/api/*）。
+ * 该接口在 server.js 侧仅放行 127.0.0.1/::1，而主机客户端本身即本机，
+ * 因此可在客户端里直接创建成员账号（免邮箱验证），无需打开浏览器管理台、无需配置 SMTP。
+ */
+async function callAdminApi(pathname, { method = 'GET', body } = {}) {
+  const s = teamServer.status();
+  if (!s.running || !s.port) return { success: false, error: '内嵌服务器未运行，请先启动局域网主机' };
+  try {
+    const res = await fetch(`http://127.0.0.1:${s.port}${pathname}`, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { success: false, error: `管理接口返回异常（HTTP ${res.status}）` };
+    }
+  } catch (e) {
+    return { success: false, error: `管理接口请求失败：${e.message}` };
+  }
+}
+
+ipcMain.handle('team-server:admin-users', () => callAdminApi('/admin/api/users'));
+ipcMain.handle('team-server:admin-create-user', (event, payload) =>
+  callAdminApi('/admin/api/users/create', { method: 'POST', body: payload || {} }));
+ipcMain.handle('team-server:admin-set-role', (event, payload) =>
+  callAdminApi('/admin/api/users/role', { method: 'POST', body: payload || {} }));
+ipcMain.handle('team-server:admin-set-status', (event, payload) =>
+  callAdminApi('/admin/api/users/status', { method: 'POST', body: payload || {} }));
+ipcMain.handle('team-server:admin-delete-user', (event, payload) =>
+  callAdminApi('/admin/api/users/delete', { method: 'POST', body: payload || {} }));
+
 // 局域网发现：开始/停止浏览；列表通过 discovery:update 事件推送，也可轮询 list
 ipcMain.handle('discovery:start', () => {
   discovery.startBrowse();
