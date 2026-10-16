@@ -204,32 +204,50 @@ async function remoteDbRequest(endpoint, body) {
   if (sessionUser?.username) headers['X-User'] = sessionUser.username;
   if (sessionUser?.token) headers['X-User-Token'] = sessionUser.token;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-  try {
-    const res = await fetch(base + endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      let detail = `HTTP ${res.status}`;
-      try {
-        const j = await res.json();
-        if (j && j.error) detail = j.error;
-      } catch { /* 忽略非 JSON 响应 */ }
-      return { success: false, error: `团队服务器请求失败: ${detail}` };
+  /* 连接根本没建立（ECONNREFUSED/DNS 解析失败/无路由）说明请求从未到达服务器，
+   * 此时重试是安全的（不会造成 /api/execute 等写操作重复执行）。
+   * 覆盖启动竞态：内嵌服务器(autoStart) spawn→READY 约 0.9s，渲染层首帧的
+   * 会话恢复请求可能落在端口监听之前，表现为登录页「无法连接团队服务器: fetch failed」。
+   * 超时（AbortError）与 HTTP 错误不重试：请求可能已被服务端收到并处理。 */
+  const RETRY_DELAYS_MS = [400, 1200];
+  const NET_NOT_SENT_CODES = new Set([
+    'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN', 'EHOSTUNREACH', 'ENETUNREACH',
+  ]);
+  let lastFailure = null;
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt - 1]));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch(base + endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`;
+        try {
+          const j = await res.json();
+          if (j && j.error) detail = j.error;
+        } catch { /* 忽略非 JSON 响应 */ }
+        return { success: false, error: `团队服务器请求失败: ${detail}` };
+      }
+      return await res.json();
+    } catch (e) {
+      const netCode = (e && e.cause && e.cause.code) || (e && e.code);
+      if (e.name === 'AbortError' || !NET_NOT_SENT_CODES.has(netCode)) {
+        const msg = e.name === 'AbortError'
+          ? '连接团队服务器超时（15 秒）'
+          : `无法连接团队服务器: ${e.message}`;
+        return { success: false, error: msg };
+      }
+      lastFailure = e; /* 连接未建立 → 进入下一轮重试 */
+    } finally {
+      clearTimeout(timer);
     }
-    return await res.json();
-  } catch (e) {
-    const msg = e.name === 'AbortError'
-      ? '连接团队服务器超时（15 秒）'
-      : `无法连接团队服务器: ${e.message}`;
-    return { success: false, error: msg };
-  } finally {
-    clearTimeout(timer);
   }
+  return { success: false, error: `无法连接团队服务器: ${lastFailure && lastFailure.message}` };
 }
 
 /* ===================== 串口日志批量写入 =====================
@@ -2197,12 +2215,9 @@ app.whenReady().then(() => {
   loadDbConfig();
   loadOfflineMark();
   installCsp();
-  createWindow();
-  createTray();
-  startAutoUpdateCheck();
-  startSsePush();
-
-  /* 上次会话曾开启「作为局域网主机」则自动恢复启动内嵌服务器 */
+  /* 先发起内嵌服务器启动再建窗：autoStart 的 spawn→READY 约 0.9s，
+   * 与窗口加载并行，尽量让渲染层首个会话恢复请求落在端口就绪之后
+   * （启动竞态的兜底重试见 remoteDbRequest / 登录页 unreachable 自动重连） */
   try {
     if (teamServer.getConfig().autoStart) {
       teamServer.start({}).catch((e) => console.log('[embed] 自动启动失败:', e.message));
@@ -2210,6 +2225,10 @@ app.whenReady().then(() => {
   } catch (e) {
     console.log('[embed] 读取内嵌服务器配置失败:', e.message);
   }
+  createWindow();
+  createTray();
+  startAutoUpdateCheck();
+  startSsePush();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

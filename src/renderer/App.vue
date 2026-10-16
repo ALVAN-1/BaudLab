@@ -142,6 +142,9 @@
               可能原因：主机电脑未开机或未启动服务器，也可能是地址/访问令牌有误。<br>
               若这是你的第一台设备，可把本机直接设为团队服务器。
             </p>
+            <p v-if="unreachableAutoRetrying" class="login-server-hint" style="color:var(--accent-blue);">
+              正在自动重试连接服务器…
+            </p>
             <div class="login-form-actions">
               <button class="btn btn-secondary" :disabled="authBusy" @click="retrySession">{{ authBusy ? '重试中…' : '重试' }}</button>
               <button class="btn btn-secondary" :disabled="hostBusy || authBusy" @click="becomeHostAndConnect">{{ hostBusy ? '启动中…' : '把本机设为团队服务器' }}</button>
@@ -1459,11 +1462,78 @@ async function retrySession() {
     if (!showLogin.value) {
       showFallbackDialog.value = false;
       startupReady.value = true;
+    } else if (sessionState.value === 'unreachable') {
+      startUnreachableAutoRetry(); /* 手动重试仍失败 → 重新拉起一轮自动重连（幂等） */
     }
   } finally {
     authBusy.value = false;
   }
 }
+
+/* 登录页「服务器不可达」自动重连：
+ * 启动竞态下（内嵌服务器 autoStart 就绪约需 0.9s）渲染层首个会话恢复会先于端口
+ * 监听到达而落到 unreachable，但服务器随后就绪。因此：
+ *   a) 监听 team-server:state，内嵌服务器 running 即刻重连（主路径）；
+ *   b) 退避重试若干次（2s/5s/10s/30s），兜住远程服务器短暂闪断。
+ * 全部失败才停在手动重试界面；用户手动进入本地模式/设为主机会立即取消。 */
+const UNREACHABLE_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
+let unreachableRetryTimer = null;
+let unreachableRetryIdx = 0;
+let unreachableAutoActive = false;
+let offUnreachableServerState = null;
+const unreachableAutoRetrying = ref(false);
+
+function stopUnreachableAutoRetry() {
+  if (unreachableRetryTimer) { clearTimeout(unreachableRetryTimer); unreachableRetryTimer = null; }
+  if (offUnreachableServerState) { offUnreachableServerState(); offUnreachableServerState = null; }
+  unreachableRetryIdx = 0;
+  unreachableAutoActive = false;
+  unreachableAutoRetrying.value = false;
+}
+
+function scheduleNextUnreachableRetry() {
+  if (unreachableRetryIdx >= UNREACHABLE_RETRY_DELAYS_MS.length) {
+    stopUnreachableAutoRetry(); /* 退避用尽：停在手动重试界面 */
+    return;
+  }
+  const delay = UNREACHABLE_RETRY_DELAYS_MS[unreachableRetryIdx];
+  unreachableRetryIdx += 1;
+  unreachableAutoRetrying.value = true;
+  unreachableRetryTimer = setTimeout(runUnreachableAutoRetry, delay);
+}
+
+async function runUnreachableAutoRetry() {
+  unreachableRetryTimer = null;
+  if (sessionState.value !== 'unreachable') { stopUnreachableAutoRetry(); return; }
+  if (authBusy.value) { scheduleNextUnreachableRetry(); return; } /* 用户在手动操作，顺延 */
+  await retrySession();
+  if (sessionState.value === 'unreachable') scheduleNextUnreachableRetry();
+  else stopUnreachableAutoRetry();
+}
+
+function startUnreachableAutoRetry() {
+  if (unreachableAutoActive) return; /* 已在自动重试（幂等） */
+  unreachableAutoActive = true;
+  unreachableAutoRetrying.value = true;
+  unreachableRetryIdx = 0;
+  const ts = hasElectron && window.electronAPI && window.electronAPI.teamServer;
+  if (ts && typeof ts.onState === 'function') {
+    offUnreachableServerState = ts.onState((state) => {
+      /* 内嵌服务器刚就绪 → 立即重连（启动竞态的主恢复路径） */
+      if (state && state.running && sessionState.value === 'unreachable'
+        && !authBusy.value && !unreachableRetryTimer) {
+        runUnreachableAutoRetry();
+      }
+    });
+  }
+  scheduleNextUnreachableRetry();
+}
+
+/* 状态离开 unreachable（登录成功/切本地模式/设为主机）即停止自动重连 */
+watch(sessionState, (v) => {
+  if (v === 'unreachable') startUnreachableAutoRetry();
+  else stopUnreachableAutoRetry();
+});
 
 /* 进入本地身份前确保数据源切到本机 SQLite：
  * 未配置服务器时已是本地无需切换；团队模式（含不可达）则回退并开启离线追踪 */
@@ -1490,6 +1560,7 @@ function requireLocalEnterApi() {
  * 本机还没有可用身份时转到身份选择页 */
 async function enterLocalMode() {
   if (authBusy.value) return;
+  stopUnreachableAutoRetry(); /* 用户已做出选择，取消后台自动重连 */
   authBusy.value = true;
   try {
     await ensureLocalDataSource();
@@ -1886,6 +1957,7 @@ async function becomeHostAndConnect() {
   if (hostBusy.value || authBusy.value) return;
   const ts = hasElectron && window.electronAPI && window.electronAPI.teamServer;
   if (!ts) { loginError.value = '当前环境不支持内嵌服务器'; return; }
+  stopUnreachableAutoRetry(); /* 用户已做出选择，取消后台自动重连 */
   hostBusy.value = true;
   loginError.value = '';
   try {
@@ -2643,6 +2715,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('spm-switch-view', onSpmSwitchView);
   if (offLoginScan) { offLoginScan(); offLoginScan = null; }
+  stopUnreachableAutoRetry();
 });
 
 /* ===================== 系统通知 ===================== */
