@@ -74,6 +74,9 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
+      "installerLanguages": [
+        "zh_CN"
+      ],
       "allowToChangeInstallationDirectory": true,
       "artifactName": "BaudLab-Setup-${version}.${ext}",
       "include": "build/installer.nsh",

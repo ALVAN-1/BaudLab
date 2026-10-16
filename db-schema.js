@@ -192,6 +192,33 @@ const SCHEMA_SQL = `
 `;
 
 /**
+ * 清理 v1.0.0 旧默认协议「PUMP协议 v0.0.1」及其子表数据（幂等，返回清理的协议数）。
+ * 仅当 name + version 与旧 seed 完全一致时才删除，避免误伤用户自建同名协议。
+ * 注意：better-sqlite3 / node:sqlite 均默认不开启 PRAGMA foreign_keys，
+ * ON DELETE CASCADE 不生效，子表必须显式 DELETE。
+ * @param {import('better-sqlite3').Database | import('node:sqlite').DatabaseSync} db
+ * @returns {number} 被删除的协议行数
+ */
+function removeLegacySeedProtocol(db) {
+  const legacy = db
+    .prepare("SELECT id FROM protocols WHERE name = ? AND version = ?")
+    .all('PUMP协议', 'v0.0.1');
+  if (!legacy.length) return 0;
+
+  const delCmds = db.prepare('DELETE FROM commands WHERE protocol_id = ?');
+  const delMods = db.prepare('DELETE FROM modules WHERE protocol_id = ?');
+  const delVers = db.prepare('DELETE FROM protocol_versions WHERE protocol_id = ?');
+  const delProto = db.prepare('DELETE FROM protocols WHERE id = ?');
+  for (const { id } of legacy) {
+    delCmds.run(id);
+    delMods.run(id);
+    delVers.run(id);
+    delProto.run(id);
+  }
+  return legacy.length;
+}
+
+/**
  * 初始化表结构 + 默认数据（角色/管理员）
  * 桌面端与服务器端共用；幂等，可重复执行
  * @param {import('better-sqlite3').Database} db
@@ -369,6 +396,21 @@ function initSchema(db) {
     console.warn('[Schema] projects.color 列添加失败:', e.message);
   }
 
+  /* 一次性清理 v1.0.0 的旧默认协议 PUMP协议 v0.0.1（智能炒菜机示例，
+   * 已被步进电机控制驱动协议取代，见提交 d7c0020）。默认协议是"按名称幂等
+   * 插入"，不会删除被替换掉的旧行，导致从旧版本升级上来的默认库长期残留 PUMP。
+   * 只命中旧 seed 的精确签名（名称 + 版本号），用户改过名/版本的自有协议不受影响；
+   * SQLite 的 PRAGMA foreign_keys 默认关闭（ON DELETE CASCADE 不生效），
+   * 必须显式删除 commands / modules / protocol_versions 子表，否则留下孤儿数据 */
+  try {
+    const removed = removeLegacySeedProtocol(db);
+    if (removed) {
+      console.log(`[Schema] 已清理旧默认协议 PUMP协议 v0.0.1（${removed} 条，含子表数据）`);
+    }
+  } catch (e) {
+    console.warn('[Schema] 旧默认协议清理失败:', e.message);
+  }
+
   /* 插入默认协议：步进电机控制驱动协议 v1.0.0（幂等：已存在则跳过） */
   try {
     const inserted = insertDefaultProtocol(db);
@@ -397,4 +439,4 @@ function logEvent(db, level, category, source, message) {
   }
 }
 
-module.exports = { SCHEMA_SQL, initSchema, hashPassword, verifyPassword, logEvent, DEFAULT_ADMIN_EMAIL };
+module.exports = { SCHEMA_SQL, initSchema, hashPassword, verifyPassword, logEvent, removeLegacySeedProtocol, DEFAULT_ADMIN_EMAIL };

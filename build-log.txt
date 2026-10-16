@@ -1,0 +1,12 @@
+  鈥?electron-builder  version=24.13.3 os=10.0.19045
+  鈥?loaded configuration  file=package.json ("build" field)
+  鈥?@electron/rebuild not required if you use electron-builder, please consider to remove excess dependency from devDependencies
+
+To ensure your native dependencies are always matched electron version, simply add script `"postinstall": "electron-builder install-app-deps" to your `package.json`
+  鈥?rebuilding native dependencies  dependencies=@serialport/bindings-cpp@12.0.1, better-sqlite3@11.10.0 platform=win32 arch=x64
+  鈥?install prebuilt binary  name=better-sqlite3 version=11.10.0 platform=win32 arch=x64 napi=
+  鈥?packaging       platform=win32 arch=x64 electron=31.7.7 appOutDir=dist\win-unpacked
+[afterPack] 瑁佸壀瀹屾垚: LICENSES.chromium.html, LICENSE.electron.txt
+[afterPack] MCP 鏂囦欢鎷疯礉瀹屾垚: mcp/mcp-server.js, mcp/ai-tools.js, mcp/mcp-bridge.js, mcp/frame-codec.js, mcp/package.json
+[afterPack] 鍐呭祵鏈嶅姟鍣ㄨ繍琛屾椂宸插氨缁? D:\CJH_FILE\1_ProjectFile\ALVAN_UART_TOOL\BaudLab\BaudLab\dist\win-unpacked\resources\server (3 涓枃浠?+ node_modules)
+  鈥?building        target=nsis file=dist\BaudLab-Setup-1.0.11.exe archs=x64 oneClick=false perMachine=false
