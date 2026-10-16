@@ -9,4 +9,4 @@ To ensure your native dependencies are always matched electron version, simply a
 [afterPack] 瑁佸壀瀹屾垚: LICENSES.chromium.html, LICENSE.electron.txt
 [afterPack] MCP 鏂囦欢鎷疯礉瀹屾垚: mcp/mcp-server.js, mcp/ai-tools.js, mcp/mcp-bridge.js, mcp/frame-codec.js, mcp/package.json
 [afterPack] 鍐呭祵鏈嶅姟鍣ㄨ繍琛屾椂宸插氨缁? D:\CJH_FILE\1_ProjectFile\ALVAN_UART_TOOL\BaudLab\BaudLab\dist\win-unpacked\resources\server (3 涓枃浠?+ node_modules)
-  鈥?building        target=nsis file=dist\BaudLab-Setup-1.0.11.exe archs=x64 oneClick=false perMachine=false
+  鈥?building        target=nsis file=dist\BaudLab-Setup-1.0.12.exe archs=x64 oneClick=false perMachine=false

@@ -101,33 +101,39 @@ Var BL_Icon          ; 页面图标句柄
     Pop $0
     SetCtlColors $0 "" FFFFFF
 
-    ${NSD_CreateIcon} 14u 12u 28u 28u ""
+    ${NSD_CreateIcon} 14u 8u 28u 28u ""
     Pop $0
     ${NSD_SetIconFromInstaller} $0 $BL_Icon
 
-    ${NSD_CreateLabel} 52u 12u 240u 24u "欢迎安装 ${PRODUCT_NAME}"
+    ${NSD_CreateLabel} 52u 8u 240u 26u "欢迎安装 ${PRODUCT_NAME}"
     Pop $0
     SendMessage $0 ${WM_SETFONT} $BL_FTitle 1
     SetCtlColors $0 1A1D2E FFFFFF
 
-    ${NSD_CreateLabel} 52u 40u 240u 14u "串口协议管理工具 · 版本 ${VERSION}"
+    ${NSD_CreateLabel} 52u 38u 240u 14u "串口协议管理工具 · 版本 ${VERSION}"
     Pop $0
     SendMessage $0 ${WM_SETFONT} $BL_FSmall 1
     SetCtlColors $0 6B7280 FFFFFF
 
-    ${NSD_CreateLabel} 14u 66u 272u 3u "" ; 橙色分隔条
+    ${NSD_CreateLabel} 14u 64u 272u 3u "" ; 橙色分隔条
     Pop $0
     SetCtlColors $0 FF6B00 FF6B00
 
-    ${NSD_CreateLabel} 14u 72u 272u 54u "• 协议数据库：串口协议的管理与导入导出$\r$\n• 实时报文编解码、抓包与标记$\r$\n• AI 助手辅助分析与调试"
+    ; 功能要点 — 拆成独立行并加大行距, 留出呼吸空间
+    ${NSD_CreateLabel} 14u 78u 272u 13u "• 协议数据库：串口协议的管理与导入导出"
     Pop $0
     SendMessage $0 ${WM_SETFONT} $BL_FBody 1
     SetCtlColors $0 444444 FFFFFF
 
-    ${NSD_CreateLabel} 14u 128u 272u 13u "点击「下一步」开始安装"
+    ${NSD_CreateLabel} 14u 98u 272u 13u "• 实时报文编解码、抓包与标记"
     Pop $0
-    SendMessage $0 ${WM_SETFONT} $BL_FSmall 1
-    SetCtlColors $0 8A8F98 FFFFFF
+    SendMessage $0 ${WM_SETFONT} $BL_FBody 1
+    SetCtlColors $0 444444 FFFFFF
+
+    ${NSD_CreateLabel} 14u 118u 272u 13u "• AI 助手辅助分析与调试"
+    Pop $0
+    SendMessage $0 ${WM_SETFONT} $BL_FBody 1
+    SetCtlColors $0 444444 FFFFFF
 
     nsDialogs::Show
   FunctionEnd
@@ -150,38 +156,33 @@ Var BL_Icon          ; 页面图标句柄
     Pop $0
     SetCtlColors $0 "" FFFFFF
 
-    ${NSD_CreateLabel} 14u 4u 272u 18u "选择安装方式"
+    ${NSD_CreateLabel} 14u 6u 272u 20u "选择安装方式"
     Pop $0
     SendMessage $0 ${WM_SETFONT} $BL_FH2 1
     SetCtlColors $0 1A1D2E FFFFFF
-
-    ${NSD_CreateLabel} 14u 22u 272u 13u "安装方式决定程序的安装位置与所需权限"
-    Pop $0
-    SendMessage $0 ${WM_SETFONT} $BL_FSmall 1
-    SetCtlColors $0 6B7280 FFFFFF
 
     ${NSD_CreateRadioButton} 16u 42u 270u 16u "为所有用户安装"
     Pop $BL_RadioAll
     SendMessage $BL_RadioAll ${WM_SETFONT} $BL_FRadio 1
     SetCtlColors $BL_RadioAll "" FFFFFF
 
-    ${NSD_CreateLabel} 32u 58u 254u 13u "安装到 Program Files，这台电脑的所有账户可用"
+    ${NSD_CreateLabel} 32u 60u 254u 13u "安装到 Program Files，这台电脑的所有账户可用"
     Pop $0
     SendMessage $0 ${WM_SETFONT} $BL_FSmall 1
     SetCtlColors $0 6B7280 FFFFFF
 
     System::Call "advapi32::GetUserName(t.r0,*i${NSIS_MAX_STRLEN})i"
-    ${NSD_CreateRadioButton} 16u 76u 270u 16u "仅为当前用户安装 ($0)"
+    ${NSD_CreateRadioButton} 16u 80u 270u 16u "仅为当前用户安装 ($0)"
     Pop $BL_RadioUser
     SendMessage $BL_RadioUser ${WM_SETFONT} $BL_FRadio 1
     SetCtlColors $BL_RadioUser "" FFFFFF
 
-    ${NSD_CreateLabel} 32u 92u 254u 13u "安装到个人应用目录，无需管理员权限"
+    ${NSD_CreateLabel} 32u 98u 254u 13u "安装到个人应用目录，无需管理员权限"
     Pop $0
     SendMessage $0 ${WM_SETFONT} $BL_FSmall 1
     SetCtlColors $0 6B7280 FFFFFF
 
-    ${NSD_CreateLabel} 16u 108u 270u 34u ""
+    ${NSD_CreateLabel} 16u 112u 270u 30u ""
     Pop $BL_Info
     SendMessage $BL_Info ${WM_SETFONT} $BL_FSmall 1
     SetCtlColors $BL_Info 1A1D2E FFFFFF
@@ -281,31 +282,31 @@ Var BL_Icon          ; 页面图标句柄
     Pop $0
     SetCtlColors $0 "" FFFFFF
 
-    ${NSD_CreateIcon} 14u 12u 28u 28u ""
+    ${NSD_CreateIcon} 14u 8u 28u 28u ""
     Pop $0
     ${NSD_SetIconFromInstaller} $0 $BL_Icon
 
-    ${NSD_CreateLabel} 52u 12u 240u 24u "安装完成"
+    ${NSD_CreateLabel} 52u 8u 240u 26u "安装完成"
     Pop $0
     SendMessage $0 ${WM_SETFONT} $BL_FTitle 1
     SetCtlColors $0 1A1D2E FFFFFF
 
-    ${NSD_CreateLabel} 14u 46u 272u 30u "${PRODUCT_NAME} 已安装到：$\r$\n$INSTDIR"
+    ${NSD_CreateLabel} 14u 48u 272u 30u "${PRODUCT_NAME} 已安装到：$\r$\n$INSTDIR"
     Pop $0
     SendMessage $0 ${WM_SETFONT} $BL_FSmall 1
     SetCtlColors $0 6B7280 FFFFFF
 
-    ${NSD_CreateLabel} 14u 80u 272u 3u "" ; 橙色分隔条
+    ${NSD_CreateLabel} 14u 88u 272u 3u "" ; 橙色分隔条
     Pop $0
     SetCtlColors $0 FF6B00 FF6B00
 
-    ${NSD_CreateCheckbox} 14u 94u 272u 18u "立即启动 ${PRODUCT_NAME}"
+    ${NSD_CreateCheckbox} 14u 102u 272u 18u "立即启动 ${PRODUCT_NAME}"
     Pop $BL_RunChk
     SendMessage $BL_RunChk ${WM_SETFONT} $BL_FBody 1
     SetCtlColors $BL_RunChk "" FFFFFF
     SendMessage $BL_RunChk ${BM_SETCHECK} ${BST_CHECKED} 0
 
-    ${NSD_CreateLabel} 14u 118u 272u 16u "可在 Windows「设置 → 应用」或控制面板中卸载本程序"
+    ${NSD_CreateLabel} 14u 126u 280u 13u "可在 Windows 设置或控制面板中卸载"
     Pop $0
     SendMessage $0 ${WM_SETFONT} $BL_FSmall 1
     SetCtlColors $0 8A8F98 FFFFFF
